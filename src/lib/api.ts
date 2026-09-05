@@ -5,6 +5,7 @@
 
 import type { Author, Role, Settings, User } from "./core";
 import { nowIso, uid } from "./core";
+import { INSTITUTION } from "./institution";
 import { getDB, resetDB, saveDB, sleep } from "./db";
 
 export class ApiError extends Error {
@@ -85,6 +86,8 @@ export async function register(name: string, email: string, password: string): P
   const db = getDB();
   if (name.trim().length < 3) throw new ApiError(422, "Name must be at least 3 characters.");
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) throw new ApiError(422, "Enter a valid email address.");
+  if (INSTITUTION.restrictRegistrationToDomain && !email.trim().toLowerCase().endsWith("@" + INSTITUTION.emailDomain.toLowerCase()))
+    throw new ApiError(403, `Registration is limited to @${INSTITUTION.emailDomain} addresses.`);
   if (password.length < 8) throw new ApiError(422, "Password must be at least 8 characters.");
   if (db.users.some((u) => u.email.toLowerCase() === email.trim().toLowerCase())) throw new ApiError(409, "An account with this email already exists.");
   const user: User = {

@@ -4,6 +4,7 @@ import { useAuth, homeFor } from "../state/auth";
 import { ApiError } from "../lib/api";
 import { Spinner, useToast } from "../components/ui";
 import { IcAlert, IcCheck, IcLogo } from "../components/icons";
+import { INSTITUTION, instEmail } from "../lib/institution";
 
 const PIPELINE = ["Validate", "Normalize", "Deduplicate", "Identity", "MongoDB", "Analytics"];
 
@@ -57,9 +58,9 @@ function PipelineArt() {
 }
 
 const DEMO_ACCOUNTS = [
-  { label: "Admin", email: "admin@scholarai.edu", pw: "Admin@123", desc: "Full system access" },
-  { label: "Faculty", email: "anitha@scholarai.edu", pw: "Faculty@123", desc: "Dr. Anitha Raman" },
-  { label: "Student", email: "student@scholarai.edu", pw: "Student@123", desc: "Read-only access" },
+  { label: "Admin", email: instEmail("admin"), pw: "Admin@123", desc: "Full system access" },
+  { label: "Faculty", email: instEmail("anitha"), pw: "Faculty@123", desc: "Linked researcher profile" },
+  { label: "Student", email: instEmail("student"), pw: "Student@123", desc: "Read-only access" },
 ];
 
 export default function Login() {
@@ -108,6 +109,11 @@ export default function Login() {
               <div className="font-display font-semibold text-2xl text-white">Scholar<span className="text-primary-400">AI</span></div>
               <div className="text-[10px] tracking-[0.2em] uppercase text-ink-400 mt-0.5">Academic Research Intelligence</div>
             </div>
+          </div>
+          <div className="mt-4 inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-primary-400 dot-live" />
+            <span className="text-[12px] font-semibold text-ink-200">{INSTITUTION.name}</span>
+            <span className="text-[11px] text-ink-500 num">@{INSTITUTION.emailDomain}</span>
           </div>
           <h1 className="font-display text-[34px] leading-[1.15] font-semibold text-white mt-10 max-w-md">
             Five research platforms. <span className="text-primary-300">One verified</span> institutional record.

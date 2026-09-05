@@ -5,6 +5,7 @@
 
 import type { Author, DBShape, MetricSnapshot, Paper, Platform, PollingLog, SourceRecord, User } from "./core";
 import { daysAgoIso, hIndexOf, i10Of, makeOrcid, mulberry32, paperId } from "./core";
+import { INSTITUTION } from "./institution";
 
 const rng = mulberry32(20260214);
 const ri = (min: number, max: number) => Math.floor(rng() * (max - min + 1)) + min;
@@ -321,6 +322,13 @@ export function buildSeed(): DBShape {
     { platform: "WOS" as Platform, endpoint: "/wos-starter/v1/documents", status_code: 429, success: false, estimated_usage: 0 },
     { platform: "GOOGLE_SCHOLAR" as Platform, endpoint: "serpapi/scholar-author", status_code: 200, success: true, estimated_usage: 6 },
   ].map(function (r, i) { return { _id: `au_${i}`, at: daysAgoIso(ri(0, 4)), ...r }; });
+
+  // Institution wiring: rewrite the placeholder domain to the configured institute domain.
+  const rewire = (email: string) =>
+    email.endsWith("@scholarai.edu") ? email.slice(0, -"scholarai.edu".length) + INSTITUTION.emailDomain : email;
+  users.forEach((u) => { u.email = rewire(u.email); });
+  authors.forEach((a) => { if (a.email) a.email = rewire(a.email); });
+  polling_logs.forEach((l) => { l.triggered_by = rewire(l.triggered_by); });
 
   return {
     version: 3,
