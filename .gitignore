@@ -1,5 +1,25 @@
+# dependencies
 node_modules/
-.next/
+frontend/node_modules/
+
+# build output
 dist/
+frontend/dist/
+
+# python
+__pycache__/
+*.pyc
+backend/.venv/
+backend/venv/
+
+# secrets — NEVER commit
+backend/.env
+.env
+
+# editors / os
+.DS_Store
+.idea/
+.vscode/
+.next/
 build/
 *.log
