@@ -72,6 +72,7 @@ export interface IdentityEvidence {
   name_similarity: number;
   affiliation_match: boolean;
   publication_overlap: number;
+  note?: string;
 }
 
 export interface Author {

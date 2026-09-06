@@ -59,7 +59,7 @@ function PipelineArt() {
 
 const DEMO_ACCOUNTS = [
   { label: "Admin", email: instEmail("admin"), pw: "Admin@123", desc: "Full system access" },
-  { label: "Faculty", email: instEmail("anitha"), pw: "Faculty@123", desc: "Linked researcher profile" },
+  { label: "Faculty", email: instEmail("mangala"), pw: "Faculty@123", desc: "Dr. Mangala Madankar" },
   { label: "Student", email: instEmail("student"), pw: "Student@123", desc: "Read-only access" },
 ];
 

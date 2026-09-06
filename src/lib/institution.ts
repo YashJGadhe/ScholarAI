@@ -5,19 +5,19 @@
 
 export const INSTITUTION = {
   /* Full name shown on the sign-in screen */
-  name: "ScholarAI Institute of Technology",
+  name: "G H Raisoni College of Engineering",
 
   /* Short name used in titles / footer */
-  shortName: "ScholarAI Institute",
+  shortName: "GHRCE Nagpur",
 
   /* YOUR INSTITUTE DOMAIN — all seeded logins become <local-part>@<emailDomain> */
-  emailDomain: "scholarai.edu",
+  emailDomain: "raisoni.edu",
 
   tagline: "Academic Research Intelligence",
 
   /* true  → self-registration only accepts addresses ending in @<emailDomain>
      false → any email may register (they join as STUDENT) */
-  restrictRegistrationToDomain: false,
+  restrictRegistrationToDomain: true,
 };
 
 /** Build an institute email from a local part, e.g. instEmail("admin") → admin@<domain> */
