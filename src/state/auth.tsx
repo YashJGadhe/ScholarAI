@@ -9,7 +9,7 @@ interface AuthState {
   token: string | null;
   booting: boolean;
   login: (email: string, password: string) => Promise<SafeUser>;
-  register: (name: string, email: string, password: string) => Promise<SafeUser>;
+  register: (name: string, email: string, password: string, role: Role, orcid: string, scopusId: string) => Promise<SafeUser>;
   logout: () => void;
 }
 
@@ -37,8 +37,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return res.user;
   }, []);
 
-  const register = useCallback(async (name: string, email: string, password: string) => {
-    const res = await api.register(name, email, password);
+  const register = useCallback(async (name: string, email: string, password: string, role: Role, orcid: string, scopusId: string) => {
+    const res = await api.register(name, email, password, role, orcid, scopusId);
     api.setToken(res.token);
     setTok(res.token);
     setUser(res.user);

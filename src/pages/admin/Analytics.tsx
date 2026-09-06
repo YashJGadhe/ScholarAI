@@ -49,15 +49,15 @@ export default function AdminAnalytics() {
     return rows;
   }, [topAuthors]);
 
-  if (!authors) {
-    return <div className="space-y-4"><Skeleton className="h-8 w-56" /><div className="grid lg:grid-cols-2 gap-4">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-72" />)}</div></div>;
-  }
-
   const typeData = useMemo(() => {
     const m = new Map<string, number>();
     papers.forEach((p) => m.set(p.paper_type, (m.get(p.paper_type) ?? 0) + 1));
     return [...m.entries()].map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
   }, [papers]);
+
+  if (!authors) {
+    return <div className="space-y-4"><Skeleton className="h-8 w-56" /><div className="grid lg:grid-cols-2 gap-4">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-72" />)}</div></div>;
+  }
 
   return (
     <div>

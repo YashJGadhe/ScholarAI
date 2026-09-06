@@ -1,24 +1,40 @@
-/* ScholarAI — INSTITUTION CONFIG.
-   Edit this ONE file to rebrand the platform for your institute:
-   every login/register email, the seeded accounts and the sign-in screen
-   pick these values up automatically. */
+/* ScholarAI — INSTITUTION CONFIG (G H Raisoni).
+   One file controls branding + email-domain policy:
+   • Admin & Faculty  → @raisoni.net          (e.g. shruti.thakur@raisoni.net)
+   • Students         → @ghrce.raisoni.net    (e.g. yash.gadhe.cse@ghrce.raisoni.net) */
+
+import type { Role } from "./core";
 
 export const INSTITUTION = {
-  /* Full name shown on the sign-in screen */
   name: "G H Raisoni College of Engineering",
-
-  /* Short name used in titles / footer */
-  shortName: "GHRCE Nagpur",
-
-  /* YOUR INSTITUTE DOMAIN — all seeded logins become <local-part>@<emailDomain> */
-  emailDomain: "raisoni.edu",
-
+  shortName: "GHRCE",
+  city: "Nagpur",
   tagline: "Academic Research Intelligence",
 
-  /* true  → self-registration only accepts addresses ending in @<emailDomain>
-     false → any email may register (they join as STUDENT) */
+  adminFacultyDomain: "raisoni.net",
+  studentDomain: "ghrce.raisoni.net",
+
+  /* true → registration enforces the role-specific domains above */
   restrictRegistrationToDomain: true,
 };
 
-/** Build an institute email from a local part, e.g. instEmail("admin") → admin@<domain> */
-export const instEmail = (localPart: string) => `${localPart}@${INSTITUTION.emailDomain}`;
+export const domainForRole = (role: Role): string =>
+  role === "STUDENT" ? INSTITUTION.studentDomain : INSTITUTION.adminFacultyDomain;
+
+export const instEmail = (localPart: string, role: Role = "ADMIN"): string =>
+  `${localPart}@${domainForRole(role)}`;
+
+export const emailOkForRole = (email: string, role: Role): boolean =>
+  email.trim().toLowerCase().endsWith("@" + domainForRole(role).toLowerCase());
+
+/** "Dr. Shruti Thakur" → "shruti.thakur" */
+export const facultyLocal = (fullName: string): string => {
+  const parts = fullName
+    .replace(/^(dr|prof|mr|ms|mrs)\.?\s+/i, "")
+    .split(/\s+/)
+    .map((t) => t.replace(/[^a-zA-Z]/g, "").toLowerCase())
+    .filter(Boolean);
+  if (parts.length === 0) return "faculty";
+  if (parts.length === 1) return parts[0];
+  return `${parts[0]}.${parts[parts.length - 1]}`;
+};

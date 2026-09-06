@@ -4,8 +4,8 @@
    and role server-side — the UI may hide controls, but the API enforces. */
 
 import type { Author, Role, Settings, User } from "./core";
-import { nowIso, uid } from "./core";
-import { INSTITUTION } from "./institution";
+import { isValidScopusId, nowIso, orcidChecksumValid, uid } from "./core";
+import { INSTITUTION, domainForRole, emailOkForRole } from "./institution";
 import { getDB, resetDB, saveDB, sleep } from "./db";
 
 export class ApiError extends Error {
@@ -81,19 +81,55 @@ export async function login(email: string, password: string): Promise<{ token: s
   return { token: signToken(user), user: publicUser(user) };
 }
 
-export async function register(name: string, email: string, password: string): Promise<{ token: string; user: SafeUser }> {
-  await sleep(420);
+export async function register(
+  name: string, email: string, password: string, role: Role, orcid: string, scopusId: string,
+): Promise<{ token: string; user: SafeUser }> {
+  await sleep(460);
   const db = getDB();
   if (name.trim().length < 3) throw new ApiError(422, "Name must be at least 3 characters.");
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) throw new ApiError(422, "Enter a valid email address.");
-  if (INSTITUTION.restrictRegistrationToDomain && !email.trim().toLowerCase().endsWith("@" + INSTITUTION.emailDomain.toLowerCase()))
-    throw new ApiError(403, `Registration is limited to @${INSTITUTION.emailDomain} addresses.`);
+  const em = email.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) throw new ApiError(422, "Enter a valid email address.");
+  if (INSTITUTION.restrictRegistrationToDomain && !emailOkForRole(em, role))
+    throw new ApiError(403, `${role === "STUDENT" ? "Student" : role === "ADMIN" ? "Admin" : "Faculty"} accounts must register with an @${domainForRole(role)} address.`);
+  if (!orcid || !orcidChecksumValid(orcid)) throw new ApiError(422, "ORCID ID is mandatory and must pass checksum validation (format 0000-0000-0000-0000).");
+  if (!scopusId || !isValidScopusId(scopusId)) throw new ApiError(422, "Scopus Author ID is mandatory (9–12 digits).");
   if (password.length < 8) throw new ApiError(422, "Password must be at least 8 characters.");
-  if (db.users.some((u) => u.email.toLowerCase() === email.trim().toLowerCase())) throw new ApiError(409, "An account with this email already exists.");
+  if (db.users.some((u) => u.email.toLowerCase() === em)) throw new ApiError(409, "An account with this email already exists.");
+
+  const now = nowIso();
+  let facultyId: string | null = null;
+  if (role === "FACULTY") {
+    // Faculty self-registration creates a pending researcher record; all metrics stay
+    // NA until an admin runs "Validate & Fetch Data" (no fabrication).
+    facultyId = uid("a");
+    db.authors.push({
+      _id: facultyId, name: name.trim(), department: "Unassigned", designation: "Faculty", email: em,
+      identifiers: { orcid, scopus_id: scopusId, google_scholar_id: null, wos_id: null, researchgate_id: null },
+      profile_urls: {
+        orcid: `https://orcid.org/${orcid}`,
+        scopus: `https://www.scopus.com/authid/detail.uri?authorId=${scopusId}`,
+        google_scholar: null, researchgate: null, wos: null,
+      },
+      platform_metrics: {},
+      research_areas: [],
+      identity: {
+        status: "PARTIALLY_VERIFIED",
+        evidence: {
+          orcid_format_valid: true, scopus_id_valid: true, scopus_url_matches_id: true,
+          orcid_scopus_link: "NOT_CHECKED", common_dois: 0, name_similarity: 0,
+          affiliation_match: false, publication_overlap: 0,
+          note: "Self-registered — admin should run Validate & Fetch Data to resolve the ORCID ↔ Scopus identity",
+        },
+        resolved_at: now,
+      },
+      last_polled_at: null, last_changed_at: null, previous_summary: null, sim_pending_delta: null,
+      created_at: now, updated_at: now,
+    });
+  }
+
   const user: User = {
-    _id: uid("u"), name: name.trim(), email: email.trim().toLowerCase(),
-    password_hash: pw(password), role: "STUDENT", active: true, faculty_id: null,
-    created_at: nowIso(), last_login_at: nowIso(),
+    _id: uid("u"), name: name.trim(), email: em, password_hash: pw(password),
+    role, active: true, faculty_id: facultyId, created_at: now, last_login_at: now,
   };
   db.users.push(user);
   saveDB();

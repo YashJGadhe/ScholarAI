@@ -9,6 +9,7 @@
 
 import type { Author, DBShape, MetricSnapshot, Paper, Platform, PlatformMetrics, PollingLog, SourceRecord, User } from "./core";
 import { daysAgoIso, mulberry32, paperId, uid } from "./core";
+import { instEmail } from "./institution";
 
 const rng = mulberry32(20260214);
 const ri = (min: number, max: number) => Math.floor(rng() * (max - min + 1)) + min;
@@ -240,9 +241,11 @@ function buildPapers(facId: string, facName: string, row: FacRow): Paper[] {
 
 export function buildSeed(): DBShape {
   const users: User[] = [
-    { _id: "u_admin", name: "Admin", email: "admin@raisoni.edu", password_hash: btoa("Admin@123"), role: "ADMIN", active: true, faculty_id: null, created_at: daysAgoIso(420), last_login_at: daysAgoIso(0) },
-    { _id: "u_faculty", name: "Dr. Mangala Madankar", email: "mangala@raisoni.edu", password_hash: btoa("Faculty@123"), role: "FACULTY", active: true, faculty_id: "a1", created_at: daysAgoIso(380), last_login_at: daysAgoIso(1) },
-    { _id: "u_student", name: "Student User", email: "student@raisoni.edu", password_hash: btoa("Student@123"), role: "STUDENT", active: true, faculty_id: null, created_at: daysAgoIso(120), last_login_at: daysAgoIso(2) },
+    { _id: "u_admin", name: "Admin", email: instEmail("admin"), password_hash: btoa("Admin@123"), role: "ADMIN", active: true, faculty_id: null, created_at: daysAgoIso(420), last_login_at: daysAgoIso(0) },
+    { _id: "u_faculty", name: "Dr. Mangala Madankar", email: instEmail("mangala.madankar"), password_hash: btoa("Faculty@123"), role: "FACULTY", active: true, faculty_id: "a1", created_at: daysAgoIso(380), last_login_at: daysAgoIso(1) },
+    { _id: "u_fac2", name: "Dr. Shruti Thakur", email: instEmail("shruti.thakur"), password_hash: btoa("Faculty@123"), role: "FACULTY", active: true, faculty_id: "a8", created_at: daysAgoIso(340), last_login_at: daysAgoIso(4) },
+    { _id: "u_student", name: "Yash Gadhe", email: instEmail("yash.gadhe.cse", "STUDENT"), password_hash: btoa("Student@123"), role: "STUDENT", active: true, faculty_id: null, created_at: daysAgoIso(120), last_login_at: daysAgoIso(2) },
+    { _id: "u_inactive", name: "Kiran Raut", email: instEmail("kiran.raut.cse", "STUDENT"), password_hash: btoa("Student@123"), role: "STUDENT", active: false, faculty_id: null, created_at: daysAgoIso(200), last_login_at: daysAgoIso(60) },
   ];
 
   const authors: Author[] = [];
@@ -345,7 +348,7 @@ export function buildSeed(): DBShape {
   ].map((r, i) => ({ _id: `au_${i}`, at: daysAgoIso(ri(0, 4)), ...r }));
 
   return {
-    version: 4,
+    version: 5,
     users,
     authors,
     papers,

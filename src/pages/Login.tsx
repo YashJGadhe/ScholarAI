@@ -1,17 +1,18 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth, homeFor } from "../state/auth";
 import { ApiError } from "../lib/api";
+import type { Role } from "../lib/core";
+import { isValidScopusId, orcidChecksumValid } from "../lib/core";
+import { INSTITUTION, domainForRole, instEmail } from "../lib/institution";
 import { Spinner, useToast } from "../components/ui";
-import { IcAlert, IcCheck, IcLogo } from "../components/icons";
-import { INSTITUTION, instEmail } from "../lib/institution";
+import { IcAlert, IcCheck, IcLogo, IcX } from "../components/icons";
 
 const PIPELINE = ["Validate", "Normalize", "Deduplicate", "Identity", "MongoDB", "Analytics"];
 
 function PipelineArt() {
   return (
     <svg viewBox="0 0 560 300" className="w-full max-w-[560px]">
-      {/* source nodes */}
       {[
         { label: "ORCID", c: "#7ba23f", y: 40 },
         { label: "Scopus", c: "#e9711c", y: 100 },
@@ -27,21 +28,20 @@ function PipelineArt() {
           <path d={`M142 ${n.y} C 200 ${n.y}, 210 150, 258 150`} stroke={n.c} strokeOpacity="0.7" strokeWidth="1.3" fill="none" className="flow-line" />
         </g>
       ))}
-      {/* pipeline boxes */}
       {PIPELINE.map((p, i) => {
         const x = 258 + i * 50;
         return (
           <g key={p}>
             {i > 0 && <path d={`M${x - 50 + 40} 150 h 10`} stroke="#56708e" strokeWidth="1.2" className="flow-line" fill="none" />}
-            <rect x={x} y={p === "MongoDB" ? 130 : 136} width={p === "MongoDB" ? 40 : 40} height={p === "MongoDB" ? 40 : 28} rx="7"
+            <rect x={x} y={p === "MongoDB" ? 130 : 136} width="40" height={p === "MongoDB" ? 40 : 28} rx="7"
               fill={p === "MongoDB" ? "#0e8172" : "#101e31"} stroke={p === "MongoDB" ? "#12998a" : "#33496b"} />
             {p === "MongoDB" ? (
               <g stroke="#fff" strokeWidth="1.4" fill="none">
-                <ellipse cx={x + 20} cy={141} rx="11" ry="4" />
+                <ellipse cx={x + 20} cy="141" rx="11" ry="4" />
                 <path d={`M${x + 9} 141 v 18 c0 2.2 4.9 4 11 4 s11-1.8 11-4 v-18`} />
               </g>
             ) : (
-              <text x={x + 20} y={154} fontSize="8.5" fontWeight="700" textAnchor="middle" fill="#a7b7c9" fontFamily="Public Sans">
+              <text x={x + 20} y="154" fontSize="8.5" fontWeight="700" textAnchor="middle" fill="#a7b7c9" fontFamily="Public Sans">
                 {p === "Validate" ? "VALID" : p === "Normalize" ? "NORM" : p === "Deduplicate" ? "DEDUP" : p === "Identity" ? "ID" : "AI"}
               </text>
             )}
@@ -57,37 +57,67 @@ function PipelineArt() {
   );
 }
 
+const ROLE_TABS: { role: Role; label: string }[] = [
+  { role: "ADMIN", label: "Admin" },
+  { role: "FACULTY", label: "Faculty" },
+  { role: "STUDENT", label: "Student" },
+];
+
 const DEMO_ACCOUNTS = [
   { label: "Admin", email: instEmail("admin"), pw: "Admin@123", desc: "Full system access" },
-  { label: "Faculty", email: instEmail("mangala"), pw: "Faculty@123", desc: "Dr. Mangala Madankar" },
-  { label: "Student", email: instEmail("student"), pw: "Student@123", desc: "Read-only access" },
+  { label: "Faculty", email: instEmail("mangala.madankar"), pw: "Faculty@123", desc: "Dr. Mangala Madankar" },
+  { label: "Student", email: instEmail("yash.gadhe.cse", "STUDENT"), pw: "Student@123", desc: "Read-only access" },
 ];
+
+function Validity({ state, okText, badText }: { state: boolean | null; okText: string; badText: string }) {
+  if (state === null) return null;
+  return (
+    <div className={`flex items-center gap-1.5 mt-1 text-[11.5px] font-semibold ${state ? "text-primary-700" : "text-danger-600"}`}>
+      {state ? <IcCheck size={12} /> : <IcX size={12} />} {state ? okText : badText}
+    </div>
+  );
+}
 
 export default function Login() {
   const { login, register } = useAuth();
   const nav = useNavigate();
   const toast = useToast();
+  const [params, setParams] = useSearchParams();
+  const roleParam = (params.get("role") ?? "").toUpperCase();
+  const role: Role = roleParam === "ADMIN" || roleParam === "STUDENT" || roleParam === "FACULTY" ? (roleParam as Role) : "FACULTY";
+
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [orcid, setOrcid] = useState("");
+  const [scopus, setScopus] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [shake, setShake] = useState(0);
 
+  const setRole = (r: Role) => setParams({ role: r.toLowerCase() });
+  const domain = domainForRole(role);
+  const emailValid = email ? email.trim().toLowerCase().endsWith("@" + domain) : null;
+  const orcidValid = orcid ? orcidChecksumValid(orcid) : null;
+  const scopusValid = scopus ? isValidScopusId(scopus) : null;
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (mode === "register" && password !== confirm) {
-      setError("Passwords do not match.");
-      setShake((s) => s + 1);
-      return;
+    if (mode === "register") {
+      if (password !== confirm) { setError("Passwords do not match."); setShake((s) => s + 1); return; }
+      if (!orcidValid) { setError("A valid ORCID ID is mandatory (checksum must pass)."); setShake((s) => s + 1); return; }
+      if (!scopusValid) { setError("A valid Scopus Author ID (9–12 digits) is mandatory."); setShake((s) => s + 1); return; }
+      if (!emailValid) { setError(`This workspace requires an @${domain} email.`); setShake((s) => s + 1); return; }
     }
     setBusy(true);
     try {
-      const user = mode === "login" ? await login(email, password) : await register(name, email, password);
-      toast("success", mode === "login" ? `Welcome back, ${user.name.split(" ")[0]}.` : "Account created — signed in as Student.");
+      const user = mode === "login"
+        ? await login(email, password)
+        : await register(name, email, password, role, orcid.trim(), scopus.trim());
+      toast("success", mode === "login" ? `Welcome back, ${user.name.split(" ")[0]}.` : `Account created — signed in as ${user.role === "STUDENT" ? "Student" : user.role === "ADMIN" ? "Admin" : "Faculty"}.`);
       nav(homeFor(user.role));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong.");
@@ -113,18 +143,22 @@ export default function Login() {
           <div className="mt-4 inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-primary-400 dot-live" />
             <span className="text-[12px] font-semibold text-ink-200">{INSTITUTION.name}</span>
-            <span className="text-[11px] text-ink-500 num">@{INSTITUTION.emailDomain}</span>
+            <span className="text-[11px] text-ink-500">{INSTITUTION.city}</span>
           </div>
-          <h1 className="font-display text-[34px] leading-[1.15] font-semibold text-white mt-10 max-w-md">
+          <h1 className="font-display text-[34px] leading-[1.15] font-semibold text-white mt-8 max-w-md">
             Five research platforms. <span className="text-primary-300">One verified</span> institutional record.
           </h1>
           <p className="text-ink-300 text-sm leading-relaxed mt-4 max-w-md">
             ScholarAI harvests researcher and publication data from ORCID, Scopus, Web of Science,
             Google Scholar and ResearchGate — then validates, normalizes, deduplicates and resolves
-            identities before a single record reaches MongoDB.
+            identities before a single record reaches the research database.
           </p>
-          <div className="mt-8"><PipelineArt /></div>
-          <div className="flex flex-wrap gap-x-6 gap-y-2 mt-6 text-[12px] text-ink-400">
+          <div className="mt-6 flex flex-wrap gap-2">
+            <span className="chip border border-white/12 bg-white/5 text-ink-300 num">Admin & Faculty · @{INSTITUTION.adminFacultyDomain}</span>
+            <span className="chip border border-white/12 bg-white/5 text-ink-300 num">Students · @{INSTITUTION.studentDomain}</span>
+          </div>
+          <div className="mt-6"><PipelineArt /></div>
+          <div className="flex flex-wrap gap-x-6 gap-y-2 mt-4 text-[12px] text-ink-400">
             <span className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-primary-400 dot-live" />Summary Check-First polling</span>
             <span className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-gold-400" />NA-aware metrics — never a false zero</span>
             <span className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-[#3d6de0]" />ORCID ↔ Scopus identity resolution</span>
@@ -134,11 +168,28 @@ export default function Login() {
 
       {/* right: auth card */}
       <div className="flex-1 flex items-center justify-center p-6">
-        <div className="w-full max-w-[420px]">
+        <div className="w-full max-w-[440px]">
           <div className="lg:hidden flex items-center gap-2.5 mb-6">
             <span className="text-ink-900"><IcLogo size={32} /></span>
-            <div className="font-display font-semibold text-xl text-ink-900">Scholar<span className="text-primary-600">AI</span></div>
+            <div>
+              <div className="font-display font-semibold text-xl text-ink-900">Scholar<span className="text-primary-600">AI</span></div>
+              <div className="text-[11px] text-ink-400">{INSTITUTION.name}</div>
+            </div>
           </div>
+
+          {/* workspace selector */}
+          <div className="flex gap-2 mb-4">
+            {ROLE_TABS.map((t) => (
+              <button key={t.role} onClick={() => setRole(t.role)}
+                className={`flex-1 h-10 rounded-lg text-[13px] font-bold transition-all cursor-pointer border ${
+                  role === t.role
+                    ? "bg-ink-900 text-white border-ink-900 shadow-md -translate-y-0.5"
+                    : "bg-surface text-ink-500 border-ink-100 hover:border-ink-300 hover:text-ink-800"}`}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+
           <div className="card p-7 anim-fade-up">
             <div className="flex rounded-lg bg-ink-50 p-1 mb-6">
               {(["login", "register"] as const).map((m) => (
@@ -148,9 +199,13 @@ export default function Login() {
                 </button>
               ))}
             </div>
-            <h2 className="font-display text-[22px] font-semibold text-ink-900">{mode === "login" ? "Welcome back" : "Create an account"}</h2>
+            <h2 className="font-display text-[22px] font-semibold text-ink-900">
+              {mode === "login" ? `${ROLE_TABS.find((t) => t.role === role)?.label} sign in` : "Create an account"}
+            </h2>
             <p className="text-sm text-ink-500 mt-1 mb-5">
-              {mode === "login" ? "Sign in to your research workspace." : "New accounts join as Student (read-only). Admins can promote roles."}
+              {mode === "login"
+                ? <>Workspace: <span className="num font-semibold text-ink-700">@{domain}</span></>
+                : <>Register with your <span className="num font-semibold text-ink-700">@{domain}</span> email. ORCID & Scopus IDs are mandatory.</>}
             </p>
             {error && (
               <div key={shake} className="anim-shake flex items-start gap-2 bg-danger-50 border border-danger-100 text-danger-700 rounded-lg px-3 py-2.5 text-[13px] font-medium mb-4">
@@ -161,13 +216,31 @@ export default function Login() {
               {mode === "register" && (
                 <div>
                   <label className="label">Full name</label>
-                  <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Priya Sundaram" required />
+                  <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder={role === "STUDENT" ? "e.g. Yash Gadhe" : "e.g. Dr. Shruti Thakur"} required />
                 </div>
               )}
               <div>
                 <label className="label">Institutional email</label>
-                <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@scholarai.edu" required />
+                <input className={`input num ${emailValid === false ? "input-invalid" : ""}`} type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                  placeholder={role === "STUDENT" ? `you.cse@${INSTITUTION.studentDomain}` : `firstname.lastname@${INSTITUTION.adminFacultyDomain}`} required />
+                {mode === "register" && <Validity state={emailValid} okText={`Valid @${domain} address`} badText={`Must end in @${domain}`} />}
               </div>
+              {mode === "register" && (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="label">ORCID ID *</label>
+                      <input className={`input num ${orcidValid === false ? "input-invalid" : ""}`} value={orcid} onChange={(e) => setOrcid(e.target.value)} placeholder="0000-0002-1825-0097" required />
+                      <Validity state={orcidValid} okText="Checksum valid" badText="Checksum failed" />
+                    </div>
+                    <div>
+                      <label className="label">Scopus ID *</label>
+                      <input className={`input num ${scopusValid === false ? "input-invalid" : ""}`} value={scopus} onChange={(e) => setScopus(e.target.value)} placeholder="9–12 digits" required />
+                      <Validity state={scopusValid} okText="Format valid" badText="9–12 digits required" />
+                    </div>
+                  </div>
+                </>
+              )}
               <div>
                 <label className="label">Password</label>
                 <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required minLength={8} />
@@ -181,24 +254,33 @@ export default function Login() {
               <button type="submit" className="btn-primary w-full mt-2" disabled={busy}>
                 {busy ? <Spinner light /> : null} {mode === "login" ? "Sign in" : "Create account"}
               </button>
+              {mode === "register" && role === "FACULTY" && (
+                <p className="text-[11px] text-ink-400 leading-relaxed text-center">
+                  Faculty registration creates a pending researcher record — metrics show NA until an admin runs <em>Validate & Fetch Data</em>.
+                </p>
+              )}
             </form>
           </div>
 
           <div className="card p-4 mt-4 anim-fade-up" style={{ animationDelay: "120ms" }}>
-            <div className="text-[11px] font-bold uppercase tracking-[0.1em] text-ink-400 mb-2.5">Demo accounts</div>
+            <div className="text-[11px] font-bold uppercase tracking-[0.1em] text-ink-400 mb-2.5">Institute accounts</div>
             <div className="space-y-1.5">
               {DEMO_ACCOUNTS.map((d) => (
                 <button key={d.label} onClick={() => { setMode("login"); setEmail(d.email); setPassword(d.pw); setError(null); }}
                   className="w-full flex items-center gap-3 px-3 py-2 rounded-lg border border-ink-100 hover:border-primary-300 hover:bg-primary-50/50 transition-colors cursor-pointer text-left group">
                   <span className="w-2 h-2 rounded-full bg-primary-500 group-hover:scale-125 transition-transform" />
                   <span className="text-sm font-semibold text-ink-800 w-16">{d.label}</span>
-                  <span className="num text-[11.5px] text-ink-500">{d.email}</span>
-                  <span className="ml-auto text-[11px] text-ink-400">{d.desc}</span>
+                  <span className="num text-[11.5px] text-ink-500 truncate">{d.email}</span>
+                  <span className="ml-auto text-[11px] text-ink-400 hidden sm:block">{d.desc}</span>
                   <IcCheck size={14} />
                 </button>
               ))}
             </div>
           </div>
+
+          <button onClick={() => nav("/")} className="mt-4 w-full text-center text-[12.5px] font-semibold text-ink-400 hover:text-ink-700 transition-colors cursor-pointer">
+            ← Back to workspace selection
+          </button>
         </div>
       </div>
     </div>

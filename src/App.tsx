@@ -6,6 +6,7 @@ import { ToastProvider } from "./components/ui";
 import { IcLogo } from "./components/icons";
 import Shell from "./layouts/Shell";
 import Login from "./pages/Login";
+import Landing from "./pages/Landing";
 import AdminDashboard from "./pages/admin/Dashboard";
 import UsersPage from "./pages/admin/Users";
 import FacultyPage from "./pages/admin/Faculty";
@@ -86,7 +87,7 @@ export default function App() {
       <ToastProvider>
         <HashRouter>
           <Routes>
-            <Route path="/" element={<RootRedirect />} />
+            <Route path="/" element={<Landing />} />
             <Route path="/login" element={<LoginRoute />} />
 
             <Route path="/admin" element={<ProtectedShell roles={["ADMIN"]}><AdminDashboard /></ProtectedShell>} />
