@@ -31,12 +31,16 @@ async def get_year_wise_report(
     if not faculty:
         return {"error": "No faculty found" + (f" in department {department}" if department else ""), "rows": []}
 
+    # Extract faculty IDs for filtering papers
+    faculty_ids = [str(f["_id"]) for f in faculty]
+
     # Build aggregation pipeline to get citations by year for each faculty/platform
     # For each paper, sum citations by publication_year and platform
     pipeline = [
         {"$unwind": "$source_records"},
         {
             "$match": {
+                "faculty_ids": {"$in": faculty_ids},
                 "source_records.platform": {"$in": platforms},
                 "publication_year": {"$gte": start_year, "$lte": end_year},
             }
@@ -151,11 +155,15 @@ async def get_month_wise_report(
     if not faculty:
         return {"error": "No faculty found" + (f" in department {department}" if department else ""), "rows": []}
 
+    # Extract faculty IDs for filtering papers
+    faculty_ids = [str(f["_id"]) for f in faculty]
+
     # Aggregate by month
     pipeline = [
         {"$unwind": "$source_records"},
         {
             "$match": {
+                "faculty_ids": {"$in": faculty_ids},
                 "source_records.platform": {"$in": platforms},
                 "publication_year": year,
             }
@@ -261,11 +269,15 @@ async def get_date_range_report(
     from_dt = datetime.fromisoformat(from_date)
     to_dt = datetime.fromisoformat(to_date)
 
+    # Extract faculty IDs for filtering papers
+    faculty_ids = [str(f["_id"]) for f in faculty]
+
     # Aggregate papers within date range
     pipeline = [
         {"$unwind": "$source_records"},
         {
             "$match": {
+                "faculty_ids": {"$in": faculty_ids},
                 "source_records.platform": {"$in": platforms},
                 "publication_date": {
                     "$gte": from_date,
