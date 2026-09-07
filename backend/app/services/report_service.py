@@ -15,7 +15,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 async def get_year_wise_report(
     db: AsyncIOMotorDatabase,
-    department: str,
+    department: str | None,
     start_year: int,
     end_year: int,
     platforms: list[str] = ["WOS", "SCOPUS", "GOOGLE_SCHOLAR"],
@@ -23,11 +23,13 @@ async def get_year_wise_report(
     """Generate year-wise citation report for all faculty in a department.
 
     Returns structured data with faculty × platform × year matrix.
+    If department is None, includes all faculty across all departments.
     """
-    # Get all faculty in department
-    faculty = await db.authors.find({"department": department}).to_list(length=1000)
+    # Get all faculty in department (or all faculty if department is None)
+    query = {"department": department} if department else {}
+    faculty = await db.authors.find(query).to_list(length=1000)
     if not faculty:
-        return {"error": "No faculty found in department", "rows": []}
+        return {"error": "No faculty found" + (f" in department {department}" if department else ""), "rows": []}
 
     # Build aggregation pipeline to get citations by year for each faculty/platform
     # For each paper, sum citations by publication_year and platform
@@ -120,7 +122,7 @@ async def get_year_wise_report(
 
     return {
         "report_type": "YEAR_WISE",
-        "department": department,
+        "department": department or "All Departments",
         "start_year": start_year,
         "end_year": end_year,
         "platforms": platforms,
@@ -134,16 +136,20 @@ async def get_year_wise_report(
 
 async def get_month_wise_report(
     db: AsyncIOMotorDatabase,
-    department: str,
+    department: str | None,
     year: int,
     start_month: int = 1,
     end_month: int = 12,
     platforms: list[str] = ["WOS", "SCOPUS", "GOOGLE_SCHOLAR"],
 ) -> dict:
-    """Generate month-wise citation report for a specific year."""
-    faculty = await db.authors.find({"department": department}).to_list(length=1000)
+    """Generate month-wise citation report for a specific year.
+    
+    If department is None, includes all faculty across all departments.
+    """
+    query = {"department": department} if department else {}
+    faculty = await db.authors.find(query).to_list(length=1000)
     if not faculty:
-        return {"error": "No faculty found in department", "rows": []}
+        return {"error": "No faculty found" + (f" in department {department}" if department else ""), "rows": []}
 
     # Aggregate by month
     pipeline = [
@@ -223,7 +229,7 @@ async def get_month_wise_report(
 
     return {
         "report_type": "MONTH_WISE",
-        "department": department,
+        "department": department or "All Departments",
         "year": year,
         "start_month": start_month,
         "end_month": end_month,
@@ -238,15 +244,19 @@ async def get_month_wise_report(
 
 async def get_date_range_report(
     db: AsyncIOMotorDatabase,
-    department: str,
+    department: str | None,
     from_date: str,
     to_date: str,
     platforms: list[str] = ["WOS", "SCOPUS", "GOOGLE_SCHOLAR"],
 ) -> dict:
-    """Generate report for custom date range."""
-    faculty = await db.authors.find({"department": department}).to_list(length=1000)
+    """Generate report for custom date range.
+    
+    If department is None, includes all faculty across all departments.
+    """
+    query = {"department": department} if department else {}
+    faculty = await db.authors.find(query).to_list(length=1000)
     if not faculty:
-        return {"error": "No faculty found in department", "rows": []}
+        return {"error": "No faculty found" + (f" in department {department}" if department else ""), "rows": []}
 
     from_dt = datetime.fromisoformat(from_date)
     to_dt = datetime.fromisoformat(to_date)
@@ -324,7 +334,7 @@ async def get_date_range_report(
 
     return {
         "report_type": "DATE_RANGE",
-        "department": department,
+        "department": department or "All Departments",
         "from_date": from_date,
         "to_date": to_date,
         "platforms": platforms,

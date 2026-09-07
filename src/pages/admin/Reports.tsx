@@ -1,16 +1,10 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 import { getToken } from "../../lib/api";
 import { PageHeader } from "../../components/ui";
 import { IcDownload, IcReport, IcBook } from "../../components/icons";
 
 type ReportType = "year-wise" | "month-wise" | "date-range";
 type Platform = "WOS" | "SCOPUS" | "GOOGLE_SCHOLAR";
-
-interface Department {
-  name: string;
-  faculty_count: number;
-}
 
 interface YearWiseReport {
   report_type: string;
@@ -68,10 +62,7 @@ const PLATFORM_COLORS: Record<Platform, string> = {
 const MONTH_NAMES = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 export default function ReportsPage() {
-  const navigate = useNavigate();
   const [reportType, setReportType] = useState<ReportType>("year-wise");
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [selectedDept, setSelectedDept] = useState("");
   const [platforms, setPlatforms] = useState<Platform[]>(["WOS", "SCOPUS", "GOOGLE_SCHOLAR"]);
 
   // Year-wise
@@ -91,25 +82,6 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    fetchDepartments();
-  }, []);
-
-  const fetchDepartments = async () => {
-    try {
-      const res = await fetch("/reports/departments", {
-        headers: { Authorization: `Bearer ${getToken()}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setDepartments(data);
-        if (data.length > 0) setSelectedDept(data[0].name);
-      }
-    } catch (err) {
-      console.error("Failed to fetch departments", err);
-    }
-  };
-
   const generateReport = async () => {
     setLoading(true);
     setError("");
@@ -117,7 +89,6 @@ export default function ReportsPage() {
 
     try {
       const params = new URLSearchParams({
-        department: selectedDept,
         platforms: platforms.join(","),
       });
 
@@ -153,7 +124,6 @@ export default function ReportsPage() {
 
   const downloadReport = async (format: "excel" | "csv" | "pdf") => {
     const params = new URLSearchParams({
-      department: selectedDept,
       platforms: platforms.join(","),
       fmt: format,
     });
@@ -502,7 +472,7 @@ export default function ReportsPage() {
       />
 
       <div className="bg-white rounded-lg shadow-sm border border-ink-200 p-6 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
           <div>
             <label className="block text-sm font-semibold text-ink-700 mb-2">Report Type</label>
             <select
@@ -513,21 +483,6 @@ export default function ReportsPage() {
               <option value="year-wise">Year Wise</option>
               <option value="month-wise">Month Wise</option>
               <option value="date-range">Custom Date Range</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-ink-700 mb-2">Department</label>
-            <select
-              value={selectedDept}
-              onChange={(e) => setSelectedDept(e.target.value)}
-              className="w-full px-3 py-2 border border-ink-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-            >
-              {departments.map((dept) => (
-                <option key={dept.name} value={dept.name}>
-                  {dept.name} ({dept.faculty_count})
-                </option>
-              ))}
             </select>
           </div>
 
@@ -649,7 +604,7 @@ export default function ReportsPage() {
         <div className="flex gap-3">
           <button
             onClick={generateReport}
-            disabled={loading || !selectedDept}
+            disabled={loading}
             className="px-6 py-2 bg-primary-600 text-white rounded-md font-semibold hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {loading ? "Generating..." : "Generate Report"}

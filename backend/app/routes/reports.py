@@ -44,9 +44,9 @@ def _slug(s: str) -> str:
 
 @router.get("/year-wise")
 async def year_wise_preview(
-    department: str = Query(...),
     start_year: int = Query(..., ge=2000, le=2100),
     end_year: int = Query(..., ge=2000, le=2100),
+    department: str | None = Query(None),
     platforms: str | None = Query(None),
     db: AsyncIOMotorDatabase = Depends(get_db),
     user: dict = Depends(require_roles("ADMIN", "FACULTY")),
@@ -55,15 +55,16 @@ async def year_wise_preview(
     if start_year > end_year:
         raise HTTPException(422, "Start year cannot be greater than end year.")
     plats = _validate_platforms(platforms)
-    _validate_department(db, department)
+    if department:
+        _validate_department(db, department)
     return await report_service.get_year_wise_report(db, department, start_year, end_year, plats)
 
 
 @router.get("/year-wise/download")
 async def year_wise_download(
-    department: str = Query(...),
     start_year: int = Query(...),
     end_year: int = Query(...),
+    department: str | None = Query(None),
     platforms: str | None = Query(None),
     fmt: str = Query("excel", pattern="^(excel|csv|pdf)$"),
     db: AsyncIOMotorDatabase = Depends(get_db),
@@ -75,7 +76,8 @@ async def year_wise_download(
     plats = _validate_platforms(platforms)
     report = await report_service.get_year_wise_report(db, department, start_year, end_year, plats)
 
-    filename = f"{_slug(department)}_Citation_Report_{start_year}_{end_year}"
+    dept_slug = _slug(department) if department else "all_departments"
+    filename = f"{dept_slug}_Citation_Report_{start_year}_{end_year}"
 
     if fmt == "excel":
         content = excel_report_service.generate_year_wise_excel(report)
@@ -104,10 +106,10 @@ async def year_wise_download(
 
 @router.get("/month-wise")
 async def month_wise_preview(
-    department: str = Query(...),
     year: int = Query(..., ge=2000, le=2100),
     start_month: int = Query(1, ge=1, le=12),
     end_month: int = Query(12, ge=1, le=12),
+    department: str | None = Query(None),
     platforms: str | None = Query(None),
     db: AsyncIOMotorDatabase = Depends(get_db),
     user: dict = Depends(require_roles("ADMIN", "FACULTY")),
@@ -121,10 +123,10 @@ async def month_wise_preview(
 
 @router.get("/month-wise/download")
 async def month_wise_download(
-    department: str = Query(...),
     year: int = Query(...),
     start_month: int = Query(1, ge=1, le=12),
     end_month: int = Query(12, ge=1, le=12),
+    department: str | None = Query(None),
     platforms: str | None = Query(None),
     fmt: str = Query("excel", pattern="^(excel|csv|pdf)$"),
     db: AsyncIOMotorDatabase = Depends(get_db),
@@ -137,7 +139,8 @@ async def month_wise_download(
     report = await report_service.get_month_wise_report(db, department, year, start_month, end_month, plats)
 
     month_names = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-    filename = f"{_slug(department)}_Citation_Report_{month_names[start_month]}_{month_names[end_month]}_{year}"
+    dept_slug = _slug(department) if department else "all_departments"
+    filename = f"{dept_slug}_Citation_Report_{month_names[start_month]}_{month_names[end_month]}_{year}"
 
     if fmt == "excel":
         content = excel_report_service.generate_month_wise_excel(report)
@@ -166,9 +169,9 @@ async def month_wise_download(
 
 @router.get("/date-range")
 async def date_range_preview(
-    department: str = Query(...),
     from_date: str = Query(...),
     to_date: str = Query(...),
+    department: str | None = Query(None),
     platforms: str | None = Query(None),
     db: AsyncIOMotorDatabase = Depends(get_db),
     user: dict = Depends(require_roles("ADMIN", "FACULTY")),
@@ -187,9 +190,9 @@ async def date_range_preview(
 
 @router.get("/date-range/download")
 async def date_range_download(
-    department: str = Query(...),
     from_date: str = Query(...),
     to_date: str = Query(...),
+    department: str | None = Query(None),
     platforms: str | None = Query(None),
     fmt: str = Query("excel", pattern="^(excel|csv|pdf)$"),
     db: AsyncIOMotorDatabase = Depends(get_db),
@@ -206,7 +209,8 @@ async def date_range_download(
     plats = _validate_platforms(platforms)
     report = await report_service.get_date_range_report(db, department, from_date, to_date, plats)
 
-    filename = f"{_slug(department)}_Citation_Report_{from_date}_to_{to_date}"
+    dept_slug = _slug(department) if department else "all_departments"
+    filename = f"{dept_slug}_Citation_Report_{from_date}_to_{to_date}"
 
     if fmt == "excel":
         content = excel_report_service.generate_date_range_excel(report)
