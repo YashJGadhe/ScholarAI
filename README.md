@@ -149,7 +149,64 @@ values are never fabricated.
 
 ---
 
-## 4 · Automatic Alert & Notification Module
+## 4 · Report Module (Year-Wise / Month-Wise / Date-Range)
+
+The Report module generates institutional-format citation reports for **WOS, Scopus, and
+Google Scholar only** (ResearchGate and ORCID are excluded from citation sections).
+
+### Report types
+
+| Type | Description |
+|------|-------------|
+| **Year-Wise** | Citations per faculty per year across a year range (2010 → 2026 by default) |
+| **Month-Wise** | Citations per faculty per month within a year |
+| **Custom Date Range** | Citations for an arbitrary from/to date range |
+
+### Structure
+
+```
+| Sr. No. | Faculty Name | Citations in Web of Science | ... | Citations in Scopus | ... | Citations in Google Scholar | ... |
+          |              | 2010 | 2011 | ... | 2026 | Total | 2010 | ... | 2026 | Total | 2010 | ... | 2026 | Total |
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+1         | Dr. Mangala  |   2  |   3  | ... |  39  |  39   |   5  | ... | 285  | 285   |  10  | ... | 541  | 541   |
+...
+17        | Dr. Sonia    |  NA  |  NA  | ... |   0  |   0   |  NA  | ... |   0  |   0   |   2  | ... |  15  |  15   |
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+Total     |              | ... | ... | ... | ... |  ...  | ... | ... | ... |  ...  | ... | ... | ... |  ...  |
+Average   |              | ... | ... | ... | ... |  ...  | ... | ... | ... |  ...  | ... | ... | ... |  ...  |
+```
+
+### NA policy in reports
+
+- `NA` = historical data unavailable for that year/platform
+- `0` = confirmed zero (verified by the source)
+- Never fabricate missing historical values
+
+### API endpoints
+
+```
+GET /reports/year-wise?department=CSE&start_year=2020&end_year=2026
+GET /reports/year-wise/download?department=CSE&start_year=2020&end_year=2026&fmt=excel
+GET /reports/month-wise?department=CSE&year=2026&start_month=1&end_month=8
+GET /reports/date-range?department=CSE&from_date=2026-01-01&to_date=2026-08-31
+GET /reports/departments
+```
+
+### Downloads
+
+- **Excel (.xlsx)** — openpyxl with merged platform headers, colored headers, freeze panes
+- **CSV** — UTF-8 BOM for Excel compatibility
+- **PDF** — reportlab with landscape A4 layout
+
+### Historical data
+
+Reports are generated from stored `metrics_history` snapshots and paper publication dates.
+The automatic polling system feeds historical data into these reports — no separate
+hard-coded dataset.
+
+---
+
+## 5 · Automatic Alert & Notification Module
 
 ScholarAI includes a **fully automatic** notification system that monitors research
 platforms in the background and alerts users when meaningful changes are detected —

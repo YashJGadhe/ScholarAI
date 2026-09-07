@@ -6,7 +6,7 @@
 import type { DBShape } from "./core";
 import { buildSeed } from "./seed";
 
-const KEY = "scholarai.db.v5";
+const KEY = "scholarai.db.v6";
 
 let cache: DBShape | null = null;
 
@@ -16,7 +16,7 @@ export function getDB(): DBShape {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as DBShape;
-      if (parsed && parsed.version === 5) {
+      if (parsed && parsed.version === 6) {
         cache = parsed;
         return cache;
       }

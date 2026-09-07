@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .core.config import get_settings
 from .database.indexes import create_indexes
 from .database.mongodb import close_db, connect_db
-from .routes import admin, analytics, auth, faculty, notifications, publications
+from .routes import admin, analytics, auth, faculty, notifications, publications, reports
 from .services.scheduler import PollingScheduler
 
 
@@ -65,6 +65,7 @@ app.include_router(publications.router)
 app.include_router(analytics.router)
 app.include_router(admin.router)
 app.include_router(notifications.router)
+app.include_router(reports.router)
 
 
 @app.get("/health")

@@ -195,7 +195,11 @@ function buildPapers(facId: string, facName: string, row: FacRow): Paper[] {
   if (total === 0) return [];
 
   const docs: Paper[] = [];
-  for (let i = 0; i < total; i++) docs.push(makeDoc(facId, facName, i, 2016 + Math.floor(rng() * 10)));
+  // Distribute papers across 2010-2026 for year-wise reports
+  for (let i = 0; i < total; i++) {
+    const year = 2010 + Math.floor((i / total) * 17); // Spread across 2010-2026
+    docs.push(makeDoc(facId, facName, i, year));
+  }
   docs.sort((a, b) => a.publication_year - b.publication_year || a.title.localeCompare(b.title));
 
   const mkRec = (platform: Platform, cites: number, srcId: string): SourceRecord => ({
@@ -319,26 +323,39 @@ export function buildSeed(): DBShape {
   });
 
   const metrics_history: MetricSnapshot[] = [];
+  // Generate yearly snapshots from 2010-2026 for all platforms
   authors.forEach((a) => {
-    (["SCOPUS", "GOOGLE_SCHOLAR"] as Platform[]).forEach((plat) => {
+    (["WOS", "SCOPUS", "GOOGLE_SCHOLAR"] as Platform[]).forEach((plat) => {
       const cur = a.platform_metrics[plat];
       if (!cur || cur.papers === null || cur.papers === 0) return;
-      let p = Math.max(1, Math.round(cur.papers * 0.6));
-      let c = Math.max(0, Math.round((cur.citations ?? 0) * 0.45));
-      let h = Math.max(0, Math.round((cur.h_index ?? 0) * 0.7));
-      for (let q = 7; q >= 1; q--) {
-        metrics_history.push({ _id: `mh_${a._id}_${plat}_${q}`, author_id: a._id, platform: plat, date: daysAgoIso(q * 60), papers: p, citations: c, h_index: h, i10_index: null });
-        p = Math.min(cur.papers, p + ri(0, 3));
-        c = Math.min(cur.citations ?? c, c + ri(2, 30));
-        if (q % 3 === 0) h = Math.min(cur.h_index ?? h, h + ri(0, 1));
+
+      // Generate yearly snapshots from 2010 to 2026
+      for (let year = 2010; year <= 2026; year++) {
+        const yearFraction = (year - 2010) / 16; // 0 to 1
+        const papers = Math.max(0, Math.round(cur.papers * yearFraction * 0.95));
+        const citations = Math.max(0, Math.round((cur.citations ?? 0) * yearFraction * 0.9));
+        const h_index = Math.max(0, Math.round((cur.h_index ?? 0) * yearFraction * 0.85));
+        const i10_index = plat === "GOOGLE_SCHOLAR" && cur.i10_index !== null
+          ? Math.max(0, Math.round(cur.i10_index * yearFraction * 0.9))
+          : null;
+
+        metrics_history.push({
+          _id: `mh_${a._id}_${plat}_${year}`,
+          author_id: a._id,
+          platform: plat,
+          date: `${year}-12-31T23:59:59.000Z`,
+          papers,
+          citations,
+          h_index,
+          i10_index,
+        });
       }
-      metrics_history.push({ _id: `mh_${a._id}_${plat}_now`, author_id: a._id, platform: plat, date: new Date().toISOString(), papers: cur.papers, citations: cur.citations, h_index: cur.h_index, i10_index: cur.i10_index });
     });
   });
 
   const polling_logs: PollingLog[] = [
-    { _id: "pl_1", author_id: "a1", author_name: "Dr. Mangala Madankar", triggered_by: "admin@raisoni.edu", at: daysAgoIso(2), result: "UNCHANGED", change_detected: false, change_reason: ["Stored summary matches the institutional master sheet — full collection skipped"], changes: [], api_calls: 2, duration_ms: 860 },
-    { _id: "pl_2", author_id: "a10", author_name: "Prof. Ashish Soni", triggered_by: "admin@raisoni.edu", at: daysAgoIso(5), result: "UNCHANGED", change_detected: false, change_reason: ["Scopus & Scholar summaries unchanged — no delta vs. last snapshot"], changes: [], api_calls: 2, duration_ms: 900 },
+    { _id: "pl_1", author_id: "a1", author_name: "Dr. Mangala Madankar", triggered_by: instEmail("admin"), at: daysAgoIso(2), result: "UNCHANGED", change_detected: false, change_reason: ["Stored summary matches the institutional master sheet — full collection skipped"], changes: [], api_calls: 2, duration_ms: 860 },
+    { _id: "pl_2", author_id: "a10", author_name: "Prof. Ashish Soni", triggered_by: instEmail("admin"), at: daysAgoIso(5), result: "UNCHANGED", change_detected: false, change_reason: ["Scopus & Scholar summaries unchanged — no delta vs. last snapshot"], changes: [], api_calls: 2, duration_ms: 900 },
   ];
 
   const api_usage = [
@@ -348,7 +365,7 @@ export function buildSeed(): DBShape {
   ].map((r, i) => ({ _id: `au_${i}`, at: daysAgoIso(ri(0, 4)), ...r }));
 
   return {
-    version: 5,
+    version: 6,
     users,
     authors,
     papers,
