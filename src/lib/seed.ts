@@ -184,59 +184,11 @@ function makeDoc(facId: string, facName: string, idx: number, year: number): Pap
 }
 
 function buildPapers(facId: string, facName: string, row: FacRow): Paper[] {
-  const sp = row.scopus?.[0] ?? 0;
-  const sc = row.scopus?.[1] ?? 0;
-  const wosP = row.wos?.[0] ?? 0;
-  const wosC = row.wos?.[1] ?? 0;
-  const schP = row.scholar?.[0] ?? 0;
-  const schC = row.scholar?.[1] ?? 0;
-  const extras = Math.max(0, schP - sp);
-  const total = Math.max(sp, schP);
-  if (total === 0) return [];
-
-  const docs: Paper[] = [];
-  // Distribute papers across 2010-2026 for year-wise reports
-  for (let i = 0; i < total; i++) {
-    const year = 2010 + Math.floor((i / total) * 17); // Spread across 2010-2026
-    docs.push(makeDoc(facId, facName, i, year));
-  }
-  docs.sort((a, b) => a.publication_year - b.publication_year || a.title.localeCompare(b.title));
-
-  const mkRec = (platform: Platform, cites: number, srcId: string): SourceRecord => ({
-    platform,
-    source_name: pick(JOURNALS),
-    source_id: srcId,
-    citation_count: cites,
-    retrieved_at: daysAgoIso(ri(2, 30)),
-    url: undefined,
-    validation_status: "VALID",
-  });
-
-  // Scopus records on the oldest `sp` docs (highest citation shares)
-  const scopusCites = distribute(sc, sp).sort((a, b) => b - a);
-  const scopusDocs = docs.slice(0, sp);
-  scopusDocs.forEach((d, i) => d.source_records.push(mkRec("SCOPUS", scopusCites[i], `2-s2.0-${ri(10000000000, 89999999999)}`)));
-
-  // WoS records on the oldest subset of Scopus docs
-  if (wosP > 0 && scopusDocs.length > 0) {
-    const n = Math.min(wosP, scopusDocs.length);
-    const wosCites = distribute(wosC, n).sort((a, b) => b - a);
-    scopusDocs.slice(0, n).forEach((d, i) => d.source_records.push(mkRec("WOS", wosCites[i], `WOS:${ri(100000000, 499999999)}${ri(10, 99)}`)));
-  }
-
-  // Scholar records
-  if (schP > 0) {
-    const scholarCites = distribute(schC, schP).sort((a, b) => b - a);
-    const scholarDocs = sp === 0 ? docs.slice(0, schP) : schP >= sp ? docs : scopusDocs.slice(0, schP);
-    scholarDocs.forEach((d, i) => d.source_records.push(mkRec("GOOGLE_SCHOLAR", scholarCites[i], `GS${ri(10000000, 15999999)}`)));
-  }
-
-  docs.forEach((d) => {
-    const doi = d.doi;
-    const r0 = d.source_records[0];
-    if (r0) r0.url = doi ? `https://doi.org/${doi}` : `https://example.org/records/${ri(100000, 999999)}`;
-  });
-  return docs;
+  // IMPORTANT: No fake papers are generated.
+  // Real papers will be fetched from academic APIs (Scopus, Google Scholar, ORCID, WoS)
+  // when the backend is configured with valid API keys.
+  // Citation metrics are preserved from the institutional master sheet.
+  return [];
 }
 
 /* ------------------------------------------------------------------ */

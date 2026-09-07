@@ -10,6 +10,7 @@ import { PageHeader, Skeleton, useToast } from "../../components/ui";
 import { IcDownload, IcExternal, IcRefresh, IcSearch } from "../../components/icons";
 import { downloadExcel, downloadCSV, downloadJSON } from "../../lib/export";
 import { useAuth } from "../../state/auth";
+import DemoDisclaimer from "../../components/DemoDisclaimer";
 
 type Platform = "SCOPUS" | "WOS" | "GOOGLE_SCHOLAR" | "ORCID";
 
@@ -190,6 +191,8 @@ export default function FacultyResearchPapers() {
         title="My Research Papers" 
         sub="View and manage your research publications"
       />
+
+      <DemoDisclaimer />
 
       {/* Faculty Profile Summary */}
       <div className="card p-5 mb-4">

@@ -1,50 +1,183 @@
-"""Web of Science connector — Clarivate WoS Starter API (official; no scraping).
+"""
+Web of Science API Service - Fetch research papers and metrics from Clarivate Web of Science
 
-Fields not exposed by the subscribed plan are returned as None → rendered NA.
-Values are never fabricated.
+STATUS: PLACEHOLDER IMPLEMENTATION
+To make this work, you need to:
+1. Obtain API access from Clarivate (requires institutional subscription)
+2. Add WOS_API_KEY to backend/.env
+3. Implement the actual API calls below
+
+Documentation: https://developer.clarivate.com/apis/wos-starter
+Note: Web of Science API requires institutional access - not available for individual researchers
 """
 
-from motor.motor_asyncio import AsyncIOMotorDatabase
+import httpx
+from typing import List, Dict, Any, Optional
+import logging
 
-from ..core.config import get_settings
-from ..utils.identifiers import normalize_doi, normalize_issn, normalize_year
-from .http_util import connector_get, log_usage
-
-STARTER_URL = "https://wos-api.clarivate.com/wos-starter/v1/documents"
+logger = logging.getLogger(__name__)
 
 
-def _headers() -> dict:
-    return {"X-ApiKey": get_settings().WOS_API_KEY, "Accept": "application/json"}
+class WosService:
+    """Service for interacting with Web of Science API"""
+    
+    BASE_URL = "https://api.clarivate.com/apis/wos-starter/v1"
+    
+    def __init__(self, api_key: str):
+        """
+        Initialize Web of Science service with API key
+        
+        Args:
+            api_key: Your Web of Science API key from Clarivate
+        """
+        self.api_key = api_key
+        self.headers = {
+            "X-ApiKey": api_key,
+            "Accept": "application/json"
+        }
+    
+    async def get_author_profile(self, wos_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Fetch author profile from Web of Science
+        
+        Args:
+            wos_id: Web of Science Researcher ID
+            
+        Returns:
+            Author profile data or None if not found
+        """
+        # TODO: Implement actual API call
+        # Example implementation:
+        """
+        url = f"{self.BASE_URL}/authors/{wos_id}"
+        
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.get(url, headers=self.headers)
+                response.raise_for_status()
+                data = response.json()
+                
+                return {
+                    "name": data.get("name", {}).get("full_name", ""),
+                    "affiliation": data.get("affiliations", [{}])[0].get("name", ""),
+                    "wos_id": wos_id,
+                    "h_index": data.get("h_index", 0),
+                    "publication_count": data.get("publications_count", 0)
+                }
+            except httpx.HTTPError as e:
+                logger.error(f"Error fetching WoS author profile: {e}")
+                return None
+        """
+        
+        logger.warning("Web of Science API not implemented - returning None")
+        return None
+    
+    async def get_author_papers(self, wos_id: str, count: int = 100) -> List[Dict[str, Any]]:
+        """
+        Fetch papers for an author from Web of Science
+        
+        Args:
+            wos_id: Web of Science Researcher ID
+            count: Maximum number of papers to fetch
+            
+        Returns:
+            List of paper objects
+        """
+        # TODO: Implement actual API call
+        # Example implementation:
+        """
+        url = f"{self.BASE_URL}/documents"
+        params = {
+            "author": wos_id,
+            "limit": count,
+            "sort": "published.newest"
+        }
+        
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.get(url, headers=self.headers, params=params)
+                response.raise_for_status()
+                data = response.json()
+                
+                papers = []
+                hits = data.get("hits", [])
+                
+                for hit in hits:
+                    paper = {
+                        "title": hit.get("title", ""),
+                        "doi": hit.get("ids", {}).get("doi"),
+                        "publication_date": hit.get("published", {}).get("date"),
+                        "source": hit.get("source", {}).get("full_title", ""),
+                        "citation_count": hit.get("citations", 0),
+                        "authors": ", ".join([a.get("name", "") for a in hit.get("authors", {}).get("authors", [])]),
+                        "type": hit.get("type", "Journal Article"),
+                        "wos_id": hit.get("uid"),
+                        "platform": "WEB_OF_SCIENCE"
+                    }
+                    papers.append(paper)
+                
+                return papers
+            except httpx.HTTPError as e:
+                logger.error(f"Error fetching WoS papers: {e}")
+                return []
+        """
+        
+        logger.warning("Web of Science API not implemented - returning empty list")
+        return []
+    
+    async def get_paper_details(self, wos_uid: str) -> Optional[Dict[str, Any]]:
+        """
+        Fetch detailed information about a specific paper from Web of Science
+        
+        Args:
+            wos_uid: Web of Science unique identifier
+            
+        Returns:
+            Paper details or None if not found
+        """
+        # TODO: Implement actual API call
+        # Example implementation:
+        """
+        url = f"{self.BASE_URL}/documents/{wos_uid}"
+        
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.get(url, headers=self.headers)
+                response.raise_for_status()
+                data = response.json()
+                
+                return {
+                    "title": data.get("title", ""),
+                    "doi": data.get("ids", {}).get("doi"),
+                    "abstract": data.get("abstract", ""),
+                    "publication_date": data.get("published", {}).get("date"),
+                    "source": data.get("source", {}).get("full_title", ""),
+                    "citation_count": data.get("citations", 0),
+                    "authors": ", ".join([a.get("name", "") for a in data.get("authors", {}).get("authors", [])]),
+                    "keywords": data.get("keywords", []),
+                    "type": data.get("type", "Journal Article")
+                }
+            except httpx.HTTPError as e:
+                logger.error(f"Error fetching WoS paper details: {e}")
+                return None
+        """
+        
+        logger.warning("Web of Science API not implemented - returning None")
+        return None
 
 
-async def fetch_documents(db: AsyncIOMotorDatabase, wos_id: str, page: int = 1, limit: int = 50) -> dict:
-    if not get_settings().WOS_API_KEY:
-        return {"source": "WOS", "status": "NOT_CONFIGURED", "message": "WOS_API_KEY not set — plan required"}
-    params = {"databaseId": "WOS", "usrQuery": f"RID={wos_id}", "page": page, "limit": limit}
-    res = await connector_get(db, "WOS", STARTER_URL, "/wos-starter/v1/documents", headers=_headers(), params=params)
-    if not res["ok"]:
-        return {"source": "WOS", "status": res["status"], "message": res["message"]}
-
-    body = res["json"]
-    papers = []
-    for d in body.get("Documents") or []:
-        doi = normalize_doi(d.get("Doi"))
-        papers.append({
-            "uid": d.get("UID"),
-            "title": (d.get("titles") or [{}])[0].get("title") if d.get("titles") else None,
-            "doi": doi,
-            "year": normalize_year(d.get("PublishedYear") or (d.get("PublicationDate") or "")[:4] or None),
-            "date": d.get("PublicationDate"),
-            "type": d.get("DocumentType"),
-            "source_name": d.get("JournalName"),
-            "issn": [x for x in [normalize_issn(d.get("ISSN"))] if x],
-            "isbn": [],
-            "citations": d.get("TimesCited"),  # None when plan hides it → NA
-            "authors": d.get("Authors") or [],
-            "url": doi and f"https://doi.org/{doi}" or None,
-        })
-    await log_usage(db, "WOS", "/wos-starter/v1/documents", True, 200, len(papers))
-    return {
-        "source": "WOS", "status": "OK", "message": "",
-        "data": {"total": body.get("total"), "papers": papers},
-    }
+def get_wos_service() -> Optional[WosService]:
+    """
+    Get Web of Science service instance if API key is configured
+    
+    Returns:
+        WosService instance or None if not configured
+    """
+    import os
+    api_key = os.getenv("WOS_API_KEY")
+    
+    if not api_key:
+        logger.info("WOS_API_KEY not configured")
+        return None
+    
+    return WosService(api_key)

@@ -1,78 +1,194 @@
-"""Scopus connector — Elsevier Author Retrieval + Scopus Search APIs.
+"""
+Scopus API Service - Fetch research papers and metrics from Elsevier Scopus
 
-Summary endpoint (check-first): paper count, cited-by count, h-index.
-Document endpoint (full collection only on delta): per-paper metadata with provenance.
-Data is labeled Scopus only when it actually comes from Scopus.
+STATUS: PLACEHOLDER IMPLEMENTATION
+To make this work, you need to:
+1. Get API key from https://dev.elsevier.com/
+2. Add SCOPUS_API_KEY to backend/.env
+3. Implement the actual API calls below
+
+API Documentation: https://api.elsevier.com/documentation
+Rate Limit: 2,000 requests per week (free tier)
 """
 
-from motor.motor_asyncio import AsyncIOMotorDatabase
+import httpx
+from typing import List, Dict, Any, Optional
+from datetime import datetime
+import logging
 
-from ..core.config import get_settings
-from ..utils.identifiers import normalize_doi, normalize_issn, normalize_isbn, normalize_paper_type, normalize_year
-from .http_util import connector_get, log_usage
-
-AUTHOR_URL = "https://api.elsevier.com/content/author/author_id/{aid}"
-SEARCH_URL = "https://api.elsevier.com/content/search/scopus"
+logger = logging.getLogger(__name__)
 
 
-def _headers() -> dict:
-    return {"X-ELS-APIKey": get_settings().SCOPUS_API_KEY, "Accept": "application/json"}
-
-
-async def fetch_summary(db: AsyncIOMotorDatabase, scopus_id: str) -> dict:
-    if not get_settings().SCOPUS_API_KEY:
-        return {"source": "SCOPUS", "status": "NOT_CONFIGURED", "message": "SCOPUS_API_KEY not set"}
-    res = await connector_get(db, "SCOPUS", AUTHOR_URL.format(aid=scopus_id), "/author/summary/{id}", headers=_headers())
-    if not res["ok"]:
-        return {"source": "SCOPUS", "status": res["status"], "message": res["message"]}
-    entry = ((res["json"].get("author-retrieval-response") or [{}])[0] or {}).get("author-profile") or {}
-    prefs = entry.get("preferred-name") or {}
-    counts = {
-        "name": f"{prefs.get('given-name', '')} {prefs.get('surname', '')}".strip() or None,
-        "papers": _int(entry.get("document-count")),
-        "citations": _int(entry.get("citedby-count")),
-        "h_index": _int(entry.get("h-index")),
-    }
-    affiliation = (((entry.get("affiliation-current") or {}).get("affiliation") or [{}])[0] or {}).get("ip-doc") or {}
-    counts["affiliation"] = affiliation.get("afdispname")
-    return {"source": "SCOPUS", "status": "OK", "message": "", "data": counts}
-
-
-async def fetch_documents(db: AsyncIOMotorDatabase, scopus_id: str, start: int = 0, count: int = 25) -> dict:
-    """One page of Scopus documents for au-id(scopus_id). Caller pages as needed."""
-    if not get_settings().SCOPUS_API_KEY:
-        return {"source": "SCOPUS", "status": "NOT_CONFIGURED", "message": "SCOPUS_API_KEY not set"}
-    params = {"query": f"AU-ID({scopus_id})", "start": start, "count": count,
-              "field": "eid,dc:title,dc:creator,prism:doi,prism:issn,prism:isbn,prism:publicationName,prism:coverDate,dc:type,citedby-count,link"}
-    res = await connector_get(db, "SCOPUS", SEARCH_URL, "/search/scopus", headers=_headers(), params=params)
-    if not res["ok"]:
-        return {"source": "SCOPUS", "status": res["status"], "message": res["message"]}
-
-    body = res["json"].get("search-results") or {}
-    total = _int(body.get("opensearch:totalResults")) or 0
-    papers = []
-    for e in body.get("entry") or []:
-        doi = normalize_doi(e.get("prism:doi"))
-        papers.append({
-            "eid": e.get("eid"),
-            "title": e.get("dc:title"),
-            "doi": doi,
-            "year": normalize_year((e.get("prism:coverDate") or "")[:4] or None),
-            "date": (e.get("prism:coverDate") or None),
-            "type": normalize_paper_type(e.get("prism:aggregationType") or e.get("dc:type")),
-            "source_name": e.get("prism:publicationName"),
-            "issn": [x for x in [normalize_issn(e.get("prism:issn"))] if x],
-            "isbn": [x for x in [normalize_isbn(e.get("prism:isbn"))] if x],
-            "citations": _int(e.get("citedby-count")),
-            "authors": [a.strip() for a in (e.get("dc:creator") or "").split(",") if a.strip()],
-            "url": doi and f"https://doi.org/{doi}" or None,
-        })
-    await log_usage(db, "SCOPUS", "/search/scopus", True, 200, len(papers))
-    return {"source": "SCOPUS", "status": "OK", "message": "", "data": {"total": total, "papers": papers}}
-
-
-def _int(v) -> int | None:
-    try:
-        return int(v)
-    except (TypeError, ValueError):
+class ScopusService:
+    """Service for interacting with Scopus API"""
+    
+    BASE_URL = "https://api.elsevier.com/content"
+    
+    def __init__(self, api_key: str):
+        """
+        Initialize Scopus service with API key
+        
+        Args:
+            api_key: Your Scopus API key from dev.elsevier.com
+        """
+        self.api_key = api_key
+        self.headers = {
+            "X-ELS-APIKey": api_key,
+            "Accept": "application/json"
+        }
+    
+    async def get_author_profile(self, scopus_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Fetch author profile from Scopus
+        
+        Args:
+            scopus_id: Scopus Author ID
+            
+        Returns:
+            Author profile data or None if not found
+        """
+        # TODO: Implement actual API call
+        # Example implementation:
+        """
+        url = f"{self.BASE_URL}/author/author_id/{scopus_id}"
+        
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.get(url, headers=self.headers)
+                response.raise_for_status()
+                data = response.json()
+                
+                # Extract author profile
+                author_data = data.get("author-retrieval-response", [{}])[0]
+                coredata = author_data.get("coredata", {})
+                
+                return {
+                    "name": coredata.get("preferred-name", {}).get("given-name", "") + " " + 
+                            coredata.get("preferred-name", {}).get("surname", ""),
+                    "affiliation": coredata.get("affiliation-current", {}).get("affiliation-name", ""),
+                    "subject_areas": coredata.get("subject-area", []),
+                    "publication_count": int(coredata.get("document-count", 0)),
+                    "citation_count": int(coredata.get("citation-count", 0)),
+                    "h_index": int(coredata.get("h-index", 0)),
+                    "scopus_id": scopus_id
+                }
+            except httpx.HTTPError as e:
+                logger.error(f"Error fetching Scopus author profile: {e}")
+                return None
+        """
+        
+        logger.warning("Scopus API not implemented - returning None")
         return None
+    
+    async def get_author_papers(self, scopus_id: str, count: int = 100) -> List[Dict[str, Any]]:
+        """
+        Fetch papers for an author from Scopus
+        
+        Args:
+            scopus_id: Scopus Author ID
+            count: Maximum number of papers to fetch
+            
+        Returns:
+            List of paper objects
+        """
+        # TODO: Implement actual API call
+        # Example implementation:
+        """
+        url = f"{self.BASE_URL}/search/scopus"
+        params = {
+            "query": f"AU-ID({scopus_id})",
+            "count": count,
+            "sort": "-coverDate"
+        }
+        
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.get(url, headers=self.headers, params=params)
+                response.raise_for_status()
+                data = response.json()
+                
+                papers = []
+                entries = data.get("search-results", {}).get("entry", [])
+                
+                for entry in entries:
+                    paper = {
+                        "title": entry.get("dc:title", ""),
+                        "doi": entry.get("prism:doi"),
+                        "publication_date": entry.get("prism:coverDate"),
+                        "source": entry.get("prism:publicationName"),
+                        "citation_count": int(entry.get("citedby-count", 0)),
+                        "authors": entry.get("dc:creator", ""),
+                        "type": entry.get("prism:aggregationType", "Journal"),
+                        "scopus_id": entry.get("dc:identifier"),
+                        "platform": "SCOPUS"
+                    }
+                    papers.append(paper)
+                
+                return papers
+            except httpx.HTTPError as e:
+                logger.error(f"Error fetching Scopus papers: {e}")
+                return []
+        """
+        
+        logger.warning("Scopus API not implemented - returning empty list")
+        return []
+    
+    async def get_paper_details(self, doi: str) -> Optional[Dict[str, Any]]:
+        """
+        Fetch detailed information about a specific paper by DOI
+        
+        Args:
+            doi: Paper DOI
+            
+        Returns:
+            Paper details or None if not found
+        """
+        # TODO: Implement actual API call
+        # Example implementation:
+        """
+        url = f"{self.BASE_URL}/abstract/doi/{doi}"
+        
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.get(url, headers=self.headers)
+                response.raise_for_status()
+                data = response.json()
+                
+                abstract_data = data.get("abstracts-retrieval-response", {})
+                coredata = abstract_data.get("coredata", {})
+                
+                return {
+                    "title": coredata.get("dc:title", ""),
+                    "doi": doi,
+                    "abstract": coredata.get("dc:description", ""),
+                    "publication_date": coredata.get("prism:coverDate"),
+                    "source": coredata.get("prism:publicationName"),
+                    "citation_count": int(coredata.get("citedby-count", 0)),
+                    "authors": coredata.get("dc:creator", ""),
+                    "keywords": coredata.get("dcterms:subject", []),
+                    "type": coredata.get("prism:aggregationType", "Journal")
+                }
+            except httpx.HTTPError as e:
+                logger.error(f"Error fetching paper details: {e}")
+                return None
+        """
+        
+        logger.warning("Scopus API not implemented - returning None")
+        return None
+
+
+def get_scopus_service() -> Optional[ScopusService]:
+    """
+    Get Scopus service instance if API key is configured
+    
+    Returns:
+        ScopusService instance or None if not configured
+    """
+    import os
+    api_key = os.getenv("SCOPUS_API_KEY")
+    
+    if not api_key:
+        logger.info("SCOPUS_API_KEY not configured")
+        return None
+    
+    return ScopusService(api_key)

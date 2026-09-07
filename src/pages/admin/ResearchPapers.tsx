@@ -10,6 +10,7 @@ import { fmtDate } from "../../lib/core";
 import { PageHeader, Skeleton, useToast } from "../../components/ui";
 import { IcDownload, IcExternal, IcRefresh, IcSearch } from "../../components/icons";
 import { downloadExcel, downloadCSV, downloadJSON } from "../../lib/export";
+import DemoDisclaimer from "../../components/DemoDisclaimer";
 
 type Platform = "SCOPUS" | "WOS" | "GOOGLE_SCHOLAR" | "ORCID";
 
@@ -188,6 +189,8 @@ export default function AdminResearchPapers() {
         title="Research Papers" 
         sub="View and manage research publications for faculty members"
       />
+
+      <DemoDisclaimer />
 
       {/* Faculty Selection */}
       <div className="card p-5 mb-4">
