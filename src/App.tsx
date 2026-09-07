@@ -19,6 +19,7 @@ import SettingsPage from "./pages/admin/Settings";
 import NotificationSettings from "./pages/NotificationSettings";
 import { FacultyAnalytics, FacultyHome, FacultyProfile, FacultyPublications } from "./pages/faculty/Portal";
 import FacultyResearchPapers from "./pages/faculty/ResearchPapers";
+import AdminResearchPapers from "./pages/admin/ResearchPapers";
 import { StudentAnalytics, StudentHome, StudentPublications, StudentResearchers } from "./pages/student/Portal";
 
 const TITLES: [string, string][] = [
@@ -26,6 +27,7 @@ const TITLES: [string, string][] = [
   ["/admin/faculty", "Faculty"],
   ["/admin/users", "Users"],
   ["/admin/citations", "Citation Management"],
+  ["/admin/research-papers", "Research Papers"],
   ["/admin/polling", "On-Demand Polling"],
   ["/admin/analytics", "Analytics"],
   ["/admin/reports", "Reports & Export"],
@@ -33,7 +35,7 @@ const TITLES: [string, string][] = [
   ["/admin", "Dashboard"],
   ["/faculty/profile", "Profile & Identity"],
   ["/faculty/publications", "Publications"],
-  ["/faculty/research-papers", "Research Papers"],
+  ["/faculty/research-papers", "My Research Papers"],
   ["/faculty/analytics", "Analytics"],
   ["/faculty/notifications", "Notification Preferences"],
   ["/faculty", "My Dashboard"],
@@ -99,6 +101,7 @@ export default function App() {
             <Route path="/admin/faculty" element={<ProtectedShell roles={["ADMIN"]}><FacultyPage /></ProtectedShell>} />
             <Route path="/admin/faculty/add" element={<ProtectedShell roles={["ADMIN"]}><AddFaculty /></ProtectedShell>} />
             <Route path="/admin/citations" element={<ProtectedShell roles={["ADMIN"]}><CitationsPage /></ProtectedShell>} />
+            <Route path="/admin/research-papers" element={<ProtectedShell roles={["ADMIN"]}><AdminResearchPapers /></ProtectedShell>} />
             <Route path="/admin/polling" element={<ProtectedShell roles={["ADMIN"]}><PollingPage /></ProtectedShell>} />
             <Route path="/admin/analytics" element={<ProtectedShell roles={["ADMIN"]}><AdminAnalytics /></ProtectedShell>} />
             <Route path="/admin/reports" element={<ProtectedShell roles={["ADMIN"]}><ReportsPage /></ProtectedShell>} />

@@ -19,6 +19,7 @@ const NAV: Record<string, NavItem[]> = {
     { to: "/admin/faculty/add", label: "Add Faculty", icon: (p) => <IcPlus {...p} /> },
     { to: "/admin/users", label: "Users", icon: (p) => <IcUsers {...p} /> },
     { to: "/admin/citations", label: "Citations", icon: (p) => <IcQuote {...p} /> },
+    { to: "/admin/research-papers", label: "Research Papers", icon: (p) => <IcBook {...p} /> },
     { to: "/admin/polling", label: "Polling", icon: (p) => <IcRadar {...p} /> },
     { to: "/admin/analytics", label: "Analytics", icon: (p) => <IcChart {...p} /> },
     { to: "/admin/reports", label: "Reports", icon: (p) => <IcReport {...p} /> },
