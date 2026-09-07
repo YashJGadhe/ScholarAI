@@ -29,3 +29,7 @@ async def create_indexes(db: AsyncIOMotorDatabase) -> None:
     await db.polling_logs.create_index([("author_id", 1), ("at", -1)])
     await db.api_usage.create_index([("platform", 1), ("at", -1)])
     await db.deleted_authors.create_index("_id")
+
+    # notifications
+    await db.notifications.create_index([("recipient_user_id", 1), ("is_read", 1), ("created_at", -1)])
+    await db.notifications.create_index([("metadata.event_key", 1)], unique=True, sparse=True)

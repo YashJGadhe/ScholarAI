@@ -14,9 +14,10 @@ ScholarAI/
 │   │   ├── database/          mongodb.py (Motor) · indexes.py
 │   │   ├── models.py          user / author / paper / snapshot document builders
 │   │   ├── schemas.py         Pydantic request/response schemas
-│   │   ├── routes/            auth · faculty · publications(+citations) · analytics(+reports) · admin
+│   │   ├── routes/            auth · faculty · publications(+citations) · analytics(+reports) · admin · notifications
 │   │   ├── services/          orcid · scopus · wos · google_scholar · researchgate
 │   │   │                      identity · normalization · deduplication · polling · analytics · export
+│   │   │                      notification_service · change_detector · scheduler (automatic alerts)
 │   │   └── utils/identifiers.py  ORCID checksum · DOI/ISSN/ISBN normalizers
 │   ├── scripts/               seed_admin.py · create_indexes.py
 │   ├── requirements.txt
@@ -145,6 +146,109 @@ provenance, and a `metrics_history` snapshot is appended so you can report
 Unavailable sources (missing key, HTTP 429 quota, NIL profiles like
 `Prof. Sonali Bhardwaj`'s Scopus) are stored as null and rendered as NA —
 values are never fabricated.
+
+---
+
+## 4 · Automatic Alert & Notification Module
+
+ScholarAI includes a **fully automatic** notification system that monitors research
+platforms in the background and alerts users when meaningful changes are detected —
+no manual "Fetch Data" or "Check Updates" clicks required.
+
+### How it works
+
+```
+Background Scheduler (configurable interval)
+    ↓
+Poll all researchers (Summary Check-First)
+    ↓
+Compare current vs previous_summary
+    ↓
+Change detected?
+    ├─ NO → stop, no notification
+    └─ YES → fetch full data, detect events
+              ↓
+        Create notifications
+              ↓
+        Store in MongoDB
+              ↓
+        Deliver to users (faculty sees own, admin sees system-wide)
+```
+
+### Event types detected
+
+- **NEW_PUBLICATION** — new paper indexed in any platform
+- **SCOPUS_INDEXED** — paper newly available in Scopus
+- **WOS_INDEXED** — paper newly available in Web of Science
+- **GOOGLE_SCHOLAR_INDEXED** — paper newly available in Google Scholar
+- **ORCID_PUBLICATION** — new work in ORCID profile
+- **CITATION_INCREASE** — citation count increased
+- **H_INDEX_CHANGE** — H-index changed
+- **I10_INDEX_CHANGE** — i10-index changed (Google Scholar)
+- **PROFILE_UPDATE** — profile metadata changed
+- **DATA_COLLECTION_ERROR** — polling failed for a researcher
+- **API_ERROR** — platform API returned an error
+- **API_RATE_LIMIT** — platform quota exceeded
+- **IDENTITY_WARNING** — identity verification issue
+- **SYSTEM_ALERT** — critical system event
+
+### Notification priorities
+
+- **LOW** — citation updates, i10-index changes
+- **MEDIUM** — new publications, H-index changes, rate limits
+- **HIGH** — data collection errors, API errors, identity warnings
+- **CRITICAL** — system alerts
+
+### Duplicate prevention
+
+Each notification has a deterministic `event_key` (author_id + platform + event_type + paper_id)
+so the same event never generates duplicate alerts, even across multiple polling cycles.
+
+### User targeting
+
+- **Faculty** receives notifications about their own research profile only
+- **Admin** receives system-wide alerts (API errors, rate limits, faculty publication updates)
+- Users cannot access another user's notifications (enforced server-side)
+
+### Configuration
+
+In `backend/.env`:
+
+```bash
+# Background polling scheduler
+POLLING_ENABLED=true
+POLLING_INTERVAL_MINUTES=60
+```
+
+The scheduler runs automatically on app startup and polls all researchers at the
+configured interval. It respects Summary Check-First to minimize API calls.
+
+### Notification preferences
+
+Faculty can customize which notification categories they receive at
+`/faculty/notifications`. Disabling a category stops delivery but does **not**
+stop data collection — the two systems are independent.
+
+### API endpoints
+
+```
+GET  /notifications              list notifications (role-filtered)
+GET  /notifications/unread-count unread count
+PUT  /notifications/{id}/read    mark as read
+PUT  /notifications/read-all     mark all as read
+GET  /notifications/preferences  get preferences
+PUT  /notifications/preferences  update preferences
+```
+
+### Real-time updates
+
+The frontend polls `/notifications/unread-count` every 30 seconds and displays
+a notification bell with an unread badge in the shell header. Clicking the bell
+opens the notification center with full details, priority indicators, and
+mark-as-read actions.
+
+For production deployments, replace the polling with WebSocket or Server-Sent
+Events (SSE) — the backend architecture is ready for that upgrade.
 
 ---
 

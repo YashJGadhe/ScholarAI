@@ -6,8 +6,9 @@ import { getDB } from "../lib/db";
 import { initials } from "../lib/core";
 import {
   IcChart, IcDashboard, IcGear, IcLogo, IcLogout, IcMortar, IcPlus, IcQuote,
-  IcRadar, IcReport, IcUsers, IcBook, IcNetwork, IcEye,
+  IcRadar, IcReport, IcUsers, IcBook, IcNetwork, IcEye, IcAlert,
 } from "../components/icons";
+import NotificationCenter from "../components/NotificationCenter";
 
 interface NavItem { to: string; label: string; icon: (p: { size?: number }) => ReactNode; end?: boolean }
 
@@ -28,6 +29,7 @@ const NAV: Record<string, NavItem[]> = {
     { to: "/faculty/profile", label: "Profile & Identity", icon: (p) => <IcEye {...p} /> },
     { to: "/faculty/publications", label: "Publications", icon: (p) => <IcBook {...p} /> },
     { to: "/faculty/analytics", label: "Analytics", icon: (p) => <IcChart {...p} /> },
+    { to: "/faculty/notifications", label: "Notifications", icon: (p) => <IcAlert {...p} /> },
   ],
   STUDENT: [
     { to: "/student", label: "Overview", icon: (p) => <IcDashboard {...p} />, end: true },
@@ -112,6 +114,7 @@ export default function Shell({ children, title }: { children: ReactNode; title:
           <h2 className="font-display font-semibold text-ink-900 text-[17px]">{title}</h2>
           <div className="ml-auto flex items-center gap-3">
             <ConnectorStrip />
+            <NotificationCenter />
             <span className="chip bg-gold-100 text-gold-700 border border-gold-300/60" title="Sandbox build: seeded demo corpus, simulated connector responses. External APIs require live credentials.">
               Demo dataset
             </span>

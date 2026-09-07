@@ -86,3 +86,22 @@ class SettingsIn(BaseModel):
     wos_api_key: str | None = None
     serpapi_api_key: str | None = None
     researchgate_mode: str | None = Field(default=None, pattern="^(OFF|MANUAL_IMPORT|AUTHORIZED_ACCESS|EXTERNAL_AUTHORIZED_PROVIDER)$")
+
+
+# ---------- notifications ----------
+
+class NotificationPreferencesIn(BaseModel):
+    new_publication: bool = True
+    scopus_indexed: bool = True
+    wos_indexed: bool = True
+    google_scholar_indexed: bool = True
+    orcid_publication: bool = True
+    citation_update: bool = True
+    h_index_change: bool = True
+    i10_index_change: bool = True
+    profile_update: bool = True
+    data_collection_error: bool = True
+    api_error: bool = True
+    api_rate_limit: bool = True
+    identity_warning: bool = True
+    system_alert: bool = True

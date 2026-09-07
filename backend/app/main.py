@@ -12,7 +12,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from .core.config import get_settings
 from .database.indexes import create_indexes
 from .database.mongodb import close_db, connect_db
-from .routes import admin, analytics, auth, faculty, publications
+from .routes import admin, analytics, auth, faculty, notifications, publications
+from .services.scheduler import PollingScheduler
 
 
 @asynccontextmanager
@@ -30,7 +31,15 @@ async def lifespan(app: FastAPI):
             "created_at": datetime.now(timezone.utc).isoformat(), "last_login_at": None,
         })
         print("[ScholarAI] Seeded default admin: admin@raisoni.net / Admin@123 — CHANGE THIS.")
+
+    # Start background polling scheduler
+    scheduler = PollingScheduler(db)
+    await scheduler.start()
+
     yield
+
+    # Stop scheduler on shutdown
+    await scheduler.stop()
     close_db()
 
 
@@ -55,6 +64,7 @@ app.include_router(faculty.router)
 app.include_router(publications.router)
 app.include_router(analytics.router)
 app.include_router(admin.router)
+app.include_router(notifications.router)
 
 
 @app.get("/health")

@@ -346,3 +346,101 @@ export async function resetDemoData(token: string | null): Promise<void> {
   requireUser(token, ["ADMIN"]);
   resetDB();
 }
+
+/* ---------------- /notifications (sandbox mock) ---------------- */
+
+export async function fetchNotifications(_limit = 50, _unreadOnly = false): Promise<any[]> {
+  await sleep(200);
+  // Return mock notifications for demo purposes
+  const user = requireUser(getToken());
+  const db = getDB();
+  const dbNotifications = (db as any).notifications || [];
+  const filtered = dbNotifications.filter((n: any) => {
+    if (user.role === "ADMIN") {
+      return n.recipient_user_id === user._id ||
+        ["DATA_COLLECTION_ERROR", "API_ERROR", "API_RATE_LIMIT", "SYSTEM_ALERT", "IDENTITY_WARNING"].includes(n.event_type);
+    }
+    return n.recipient_user_id === user._id;
+  });
+  return JSON.parse(JSON.stringify(filtered));
+}
+
+export async function fetchUnreadCount(): Promise<number> {
+  await sleep(150);
+  const user = requireUser(getToken());
+  const db = getDB();
+  const dbNotifications = (db as any).notifications || [];
+  const filtered = dbNotifications.filter((n: any) => {
+    if (user.role === "ADMIN") {
+      return (n.recipient_user_id === user._id ||
+        ["DATA_COLLECTION_ERROR", "API_ERROR", "API_RATE_LIMIT", "SYSTEM_ALERT", "IDENTITY_WARNING"].includes(n.event_type)) && !n.is_read;
+    }
+    return n.recipient_user_id === user._id && !n.is_read;
+  });
+  return filtered.length;
+}
+
+export async function markAsRead(notificationId: string): Promise<void> {
+  await sleep(150);
+  const user = requireUser(getToken());
+  const db = getDB();
+  const dbNotifications = (db as any).notifications || [];
+  const notif = dbNotifications.find((n: any) => n._id === notificationId);
+  if (notif && (notif.recipient_user_id === user._id || user.role === "ADMIN")) {
+    notif.is_read = true;
+    notif.read_at = nowIso();
+    saveDB();
+  }
+}
+
+export async function markAllAsRead(): Promise<void> {
+  await sleep(200);
+  const user = requireUser(getToken());
+  const db = getDB();
+  const dbNotifications = (db as any).notifications || [];
+  dbNotifications.forEach((n: any) => {
+    if (user.role === "ADMIN") {
+      if (n.recipient_user_id === user._id ||
+        ["DATA_COLLECTION_ERROR", "API_ERROR", "API_RATE_LIMIT", "SYSTEM_ALERT", "IDENTITY_WARNING"].includes(n.event_type)) {
+        n.is_read = true;
+        n.read_at = nowIso();
+      }
+    } else if (n.recipient_user_id === user._id) {
+      n.is_read = true;
+      n.read_at = nowIso();
+    }
+  });
+  saveDB();
+}
+
+export async function fetchPreferences(): Promise<Record<string, boolean>> {
+  await sleep(150);
+  const user = requireUser(getToken());
+  return (user as any).notification_preferences || {
+    new_publication: true,
+    scopus_indexed: true,
+    wos_indexed: true,
+    google_scholar_indexed: true,
+    orcid_publication: true,
+    citation_update: true,
+    h_index_change: true,
+    i10_index_change: true,
+    profile_update: true,
+    data_collection_error: true,
+    api_error: true,
+    api_rate_limit: true,
+    identity_warning: true,
+    system_alert: true,
+  };
+}
+
+export async function updatePreferences(prefs: Record<string, boolean>): Promise<void> {
+  await sleep(200);
+  const user = requireUser(getToken());
+  const db = getDB();
+  const u = db.users.find((x) => x._id === user._id);
+  if (u) {
+    (u as any).notification_preferences = prefs;
+    saveDB();
+  }
+}

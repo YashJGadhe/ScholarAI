@@ -18,6 +18,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from ..models import paper_doc, platform_metrics_doc, polling_log_doc, snapshot_doc, source_record_doc
 from ..utils.identifiers import paper_id
 from . import google_scholar_service, orcid_service, scopus_service, wos_service
+from .change_detector import detect_and_notify, notify_platform_error, notify_rate_limit
 from .deduplication_service import upsert_paper
 from .normalization_service import normalize_paper
 
@@ -169,6 +170,29 @@ async def poll_author(db: AsyncIOMotorDatabase, author_id: str, triggered_by: st
                           reasons or ["Delta detected during full collection"], changes,
                           api_calls, int((time.perf_counter() - t0) * 1000))
     await db.polling_logs.insert_one(log)
+
+    # ---- 5) Automatic notifications for detected changes -----------------
+    # Collect newly inserted papers per platform for notification
+    new_papers_by_platform: dict[str, list[dict]] = {}
+    for plat in ["SCOPUS", "GOOGLE_SCHOLAR", "WOS", "ORCID"]:
+        if plat in new_platform_metrics:
+            # Query papers inserted during this poll (created_at within last minute)
+            from datetime import datetime, timedelta, timezone
+            cutoff = (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat()
+            papers = await db.papers.find({
+                "faculty_ids": str(author["_id"]),
+                "source_records.platform": plat,
+                "created_at": {"$gte": cutoff}
+            }).to_list(length=100)
+            new_papers_by_platform[plat] = papers
+
+    # Trigger notifications for each platform with changes
+    for plat, papers in new_papers_by_platform.items():
+        await detect_and_notify(
+            db, str(author["_id"]), author.get("name", ""), plat,
+            prev, remote, papers if papers else None,
+        )
+
     return {"result": "CHANGED", "change_detected": True, "changes": changes,
             "papers": {"inserted": inserted, "merged": merged, "flagged": flagged},
             "api_calls": api_calls, "duration_ms": log["duration_ms"]}

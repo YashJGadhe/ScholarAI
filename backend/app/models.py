@@ -149,3 +149,25 @@ def api_usage_doc(platform: str, endpoint: str, success: bool, status_code: int,
         "status_code": status_code,
         "estimated_usage": estimated_usage,
     }
+
+
+def notification_doc(
+    recipient_user_id: str, author_id: str | None, event_type: str, platform: str | None,
+    priority: str, title: str, message: str, paper_id: str | None = None,
+    paper_title: str | None = None, metadata: dict | None = None,
+) -> dict:
+    return {
+        "recipient_user_id": recipient_user_id,
+        "author_id": author_id,
+        "event_type": event_type,
+        "platform": platform,
+        "priority": priority,
+        "title": title,
+        "message": message,
+        "paper_id": paper_id,
+        "paper_title": paper_title,
+        "metadata": metadata or {},
+        "is_read": False,
+        "created_at": _now(),
+        "read_at": None,
+    }

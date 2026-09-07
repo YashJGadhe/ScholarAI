@@ -35,6 +35,10 @@ class Settings(BaseSettings):
     # HTTP behaviour for connectors
     CONNECTOR_TIMEOUT_SECONDS: float = 15.0
 
+    # Background polling scheduler
+    POLLING_ENABLED: bool = True
+    POLLING_INTERVAL_MINUTES: int = 60
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
