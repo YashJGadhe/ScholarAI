@@ -18,6 +18,7 @@ import ReportsPage from "./pages/admin/Reports";
 import SettingsPage from "./pages/admin/Settings";
 import NotificationSettings from "./pages/NotificationSettings";
 import { FacultyAnalytics, FacultyHome, FacultyProfile, FacultyPublications } from "./pages/faculty/Portal";
+import FacultyResearchPapers from "./pages/faculty/ResearchPapers";
 import { StudentAnalytics, StudentHome, StudentPublications, StudentResearchers } from "./pages/student/Portal";
 
 const TITLES: [string, string][] = [
@@ -32,6 +33,7 @@ const TITLES: [string, string][] = [
   ["/admin", "Dashboard"],
   ["/faculty/profile", "Profile & Identity"],
   ["/faculty/publications", "Publications"],
+  ["/faculty/research-papers", "Research Papers"],
   ["/faculty/analytics", "Analytics"],
   ["/faculty/notifications", "Notification Preferences"],
   ["/faculty", "My Dashboard"],
@@ -106,6 +108,7 @@ export default function App() {
             <Route path="/faculty/profile" element={<ProtectedShell roles={["FACULTY", "ADMIN"]}><FacultyProfile /></ProtectedShell>} />
             <Route path="/faculty/publications" element={<ProtectedShell roles={["FACULTY", "ADMIN"]}><FacultyPublications /></ProtectedShell>} />
             <Route path="/faculty/analytics" element={<ProtectedShell roles={["FACULTY", "ADMIN"]}><FacultyAnalytics /></ProtectedShell>} />
+            <Route path="/faculty/research-papers" element={<ProtectedShell roles={["FACULTY", "ADMIN"]}><FacultyResearchPapers /></ProtectedShell>} />
             <Route path="/faculty/notifications" element={<ProtectedShell roles={["FACULTY", "ADMIN"]}><NotificationSettings /></ProtectedShell>} />
 
             <Route path="/student" element={<ProtectedShell roles={["STUDENT", "FACULTY", "ADMIN"]}><StudentHome /></ProtectedShell>} />

@@ -296,6 +296,74 @@ export async function confirmNewFaculty(token: string | null, preview: FetchPrev
   return persistNewFaculty(preview);
 }
 
+/* ---------------- /citations/fetch-data (admin-only) ---------------- */
+
+export async function fetchAllFacultyCitations(): Promise<{
+  faculty_processed: number;
+  updated: number;
+  unchanged: number;
+  failed: number;
+  not_available: number;
+}> {
+  await sleep(800);
+  requireUser(getToken(), ["ADMIN"]);
+  const db = getDB();
+  
+  let updated = 0;
+  let unchanged = 0;
+  let failed = 0;
+  let not_available = 0;
+  
+  // Simulate fetching citation data for each faculty member
+  for (const author of db.authors) {
+    await sleep(150); // Simulate API call delay
+    
+    // Check if faculty has any platform identifiers
+    const hasIdentifiers = author.identifiers.scopus_id || 
+                          author.identifiers.orcid || 
+                          author.profile_urls.google_scholar ||
+                          author.profile_urls.wos;
+    
+    if (!hasIdentifiers) {
+      not_available++;
+      continue;
+    }
+    
+    // Simulate Summary Check-First: compare current metrics with "remote"
+    // For demo purposes, we'll randomly update some faculty
+    const shouldUpdate = Math.random() < 0.3; // 30% chance of update
+    
+    if (shouldUpdate) {
+      // Simulate finding updated metrics
+      const platforms = ["SCOPUS", "WOS", "GOOGLE_SCHOLAR"] as const;
+      for (const platform of platforms) {
+        const metrics = author.platform_metrics[platform];
+        if (metrics && metrics.papers !== null) {
+          // Simulate small updates
+          const citationIncrease = Math.floor(Math.random() * 10);
+          if (citationIncrease > 0) {
+            metrics.citations = (metrics.citations ?? 0) + citationIncrease;
+            metrics.last_updated = nowIso();
+            updated++;
+          }
+        }
+      }
+    } else {
+      unchanged++;
+    }
+  }
+  
+  saveDB();
+  
+  return {
+    faculty_processed: db.authors.length,
+    updated,
+    unchanged,
+    failed,
+    not_available,
+  };
+}
+
 /* ---------------- /publications ---------------- */
 
 export async function listPapers(token: string | null) {

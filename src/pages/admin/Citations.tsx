@@ -9,7 +9,7 @@ import { downloadExcel, downloadJSON } from "../../lib/export";
 import type { Author } from "../../lib/core";
 import { fmtDate } from "../../lib/core";
 import { PageHeader, Skeleton, StatCard, useToast } from "../../components/ui";
-import { IcDownload, IcExternal, IcInfo } from "../../components/icons";
+import { IcDownload, IcExternal, IcInfo, IcRefresh } from "../../components/icons";
 
 /** NA-aware metric cell: null → NA badge, number → exact value (0 stays 0). */
 function Cell({ v, strong = false }: { v: number | null; strong?: boolean }) {
@@ -39,11 +39,36 @@ const avg = (vals: (number | null)[]) => (vals.length ? sum(vals) / vals.length 
 export default function CitationsPage() {
   const toast = useToast();
   const [authors, setAuthors] = useState<Author[] | null>(null);
+  const [fetching, setFetching] = useState(false);
+  const [fetchResult, setFetchResult] = useState<{
+    faculty_processed: number;
+    updated: number;
+    unchanged: number;
+    failed: number;
+    not_available: number;
+  } | null>(null);
 
   useEffect(() => {
     api.listAuthors(api.getToken()).then(setAuthors).catch((e) => toast("error", e instanceof Error ? e.message : "Load failed."));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const handleFetchData = async () => {
+    setFetching(true);
+    setFetchResult(null);
+    try {
+      const result = await api.fetchAllFacultyCitations();
+      setFetchResult(result);
+      // Refresh the author list to show updated metrics
+      const updatedAuthors = await api.listAuthors(api.getToken());
+      setAuthors(updatedAuthors);
+      toast("success", `Citation data updated: ${result.updated} updated, ${result.unchanged} unchanged, ${result.failed} failed`);
+    } catch (e) {
+      toast("error", e instanceof Error ? e.message : "Fetch failed");
+    } finally {
+      setFetching(false);
+    }
+  };
 
   const totals = useMemo(() => {
     if (!authors) return null;
@@ -114,6 +139,18 @@ export default function CitationsPage() {
       <PageHeader title="Citation Management" sub="Institutional master-sheet format · source metrics kept separate per platform"
         actions={
           <>
+            <button className="btn-dark" onClick={handleFetchData} disabled={fetching || !authors}>
+              {fetching ? (
+                <>
+                  <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Fetching...
+                </>
+              ) : (
+                <>
+                  <IcRefresh size={15} /> Fetch Data
+                </>
+              )}
+            </button>
             <button className="btn-ghost" onClick={() => {
               if (!authors) return;
               const cols = ["Sr. No.", "Faculty Name", "Paper in Web of Science", "Citations in WoS", "h-Index (WOS)", "Paper in Scopus", "Citations in Scopus", "h-Index (Scopus)", "Paper in Google Scholar", "Citations in Google Scholar", "h-Index", "i-Index", "Publons Link", "Scopus Link", "Google Scholar Link", "ResearchGate ID"];
@@ -139,6 +176,37 @@ export default function CitationsPage() {
             sub={`${totals.scholar.p} papers · Σ h-index ${totals.scholar.h} · i10 Σ ${totals.scholar.i}`} />
           <StatCard label="ResearchGate" value={totals.cover.rg} suffix={`/${n}`} tone="ink" delay={120}
             sub="profiles linked · metrics NA (no authorized access)" />
+        </div>
+      )}
+
+      {fetchResult && (
+        <div className="card mt-4 p-4 border-l-4 border-l-primary-500">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="w-2 h-2 rounded-full bg-primary-500" />
+            <span className="font-semibold text-ink-900">Fetch Complete</span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
+            <div>
+              <div className="text-ink-500 text-xs">Faculty Processed</div>
+              <div className="font-semibold text-ink-900 num">{fetchResult.faculty_processed}</div>
+            </div>
+            <div>
+              <div className="text-primary-600 text-xs">Updated</div>
+              <div className="font-semibold text-primary-700 num">{fetchResult.updated}</div>
+            </div>
+            <div>
+              <div className="text-ink-500 text-xs">Unchanged</div>
+              <div className="font-semibold text-ink-700 num">{fetchResult.unchanged}</div>
+            </div>
+            <div>
+              <div className="text-danger-600 text-xs">Failed</div>
+              <div className="font-semibold text-danger-700 num">{fetchResult.failed}</div>
+            </div>
+            <div>
+              <div className="text-ink-400 text-xs">Not Available</div>
+              <div className="font-semibold text-ink-500 num">{fetchResult.not_available}</div>
+            </div>
+          </div>
         </div>
       )}
 

@@ -28,6 +28,7 @@ const NAV: Record<string, NavItem[]> = {
     { to: "/faculty", label: "My Dashboard", icon: (p) => <IcDashboard {...p} />, end: true },
     { to: "/faculty/profile", label: "Profile & Identity", icon: (p) => <IcEye {...p} /> },
     { to: "/faculty/publications", label: "Publications", icon: (p) => <IcBook {...p} /> },
+    { to: "/faculty/research-papers", label: "Research Papers", icon: (p) => <IcBook {...p} /> },
     { to: "/faculty/analytics", label: "Analytics", icon: (p) => <IcChart {...p} /> },
     { to: "/faculty/notifications", label: "Notifications", icon: (p) => <IcAlert {...p} /> },
   ],
