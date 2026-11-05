@@ -82,7 +82,8 @@ docker compose up -d
 |-----------|---------------------|-------------------------------|
 | Admin     | `@raisoni.net`      | `admin@raisoni.net`           |
 | Faculty   | `@raisoni.net`      | `shruti.thakur@raisoni.net`   |
-| Student   | `@ghrce.raisoni.net`| `yash.gadhe.cse@ghrce.raisoni.net` |
+| Student   | `@ghrce.raisoni.net`| `yash.gadhe.cse@ghrce.raisoni.net` 
+| Student   | `@ghrce.raisoni.net`| `vinit.trivedi.cse@ghrce.raisoni.net`
 
 **Registration requires a checksum-valid ORCID and a 9–12 digit Scopus ID** —
 validated at the API layer, not just the form. Faculty self-registration creates
